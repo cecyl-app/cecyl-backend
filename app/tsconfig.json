@@ -1,0 +1,12 @@
+{
+    "include": [
+        "src/**/*.ts"
+    ],
+    "compilerOptions": {
+        "outDir": "dist",
+        "target": "ES6",
+        "rootDir": "src",
+        "module": "NodeNext",
+        "moduleResolution": "nodenext"
+    }
+}

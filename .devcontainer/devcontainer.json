@@ -1,0 +1,14 @@
+{
+    "build": {
+        "dockerfile": "../Dockerfile",
+        "args": {
+            "REMOTE_USER": "${localEnv:USER}",
+            "REMOTE_UID": "${localEnv:REMOTE_UID:1000}",
+            "REMOTE_GID": "${localEnv:REMOTE_GID:1000}"
+        },
+        "target": "devcontainer",
+        "context": ".."
+    },
+    "remoteUser": "${localEnv:USER}",
+    "customizations": {}
+}

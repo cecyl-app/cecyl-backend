@@ -1,0 +1,26 @@
+{
+    "name": "cecyl",
+    "version": "1.0.0",
+    "description": "Cecyl backend",
+    "main": "index.js",
+    "scripts": {
+        "build": "npx tsc",
+        "start": "node dist/index.js"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/marco-luzzara/cecyl.git"
+    },
+    "author": "Marco Luzzara",
+    "license": "ISC",
+    "bugs": {
+        "url": "https://github.com/marco-luzzara/cecyl/issues"
+    },
+    "homepage": "https://github.com/marco-luzzara/cecyl#readme",
+    "devDependencies": {
+        "typescript": "^5.8.3"
+    },
+    "dependencies": {
+        "openai": "^4.100.0"
+    }
+}
