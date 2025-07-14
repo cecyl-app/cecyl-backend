@@ -1,6 +1,7 @@
 {
     "name": "cecyl",
     "version": "1.0.0",
+    "type": "module",
     "description": "Cecyl backend",
     "main": "index.js",
     "scripts": {
@@ -18,9 +19,13 @@
     },
     "homepage": "https://github.com/marco-luzzara/cecyl#readme",
     "devDependencies": {
+        "@types/node": "^24.0.13",
+        "json-schema-to-ts": "^3.1.1",
         "typescript": "^5.8.3"
     },
     "dependencies": {
+        "fastify": "^5.4.0",
+        "fastify-plugin": "^5.0.1",
         "openai": "^4.100.0"
     }
 }

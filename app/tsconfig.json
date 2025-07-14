@@ -4,9 +4,9 @@
     ],
     "compilerOptions": {
         "outDir": "dist",
-        "target": "ES6",
+        "target": "es2022",
         "rootDir": "src",
-        "module": "NodeNext",
+        "module": "nodenext",
         "moduleResolution": "nodenext"
     }
 }
