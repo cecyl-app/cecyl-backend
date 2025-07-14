@@ -4,6 +4,25 @@
         "target": "devcontainer",
         "context": ".."
     },
+    "runArgs": ["--env-file", ".env"],
     "postStartCommand": "make install",
-    "customizations": {}
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "[typescript]": {
+                    "editor.defaultFormatter": "vscode.typescript-language-features",
+                    "editor.formatOnSave": true
+                }
+                // "[md]": {
+                //     "editor.defaultFormatter": "esbenp.prettier-vscode",
+                //     "editor.formatOnSave": true
+                // },
+                // "[json]": {
+                //     "editor.defaultFormatter": "esbenp.prettier-vscode",
+                //     "editor.formatOnSave": true
+                // }
+            },
+            "extensions": ["ms-vscode.makefile-tools"]
+        }
+    }
 }

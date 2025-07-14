@@ -1,8 +1,12 @@
 SHELL=/bin/sh
-.PHONY: install build
+APP_FOLDER := app
+.PHONY: install build run
 
 install:
-	cd app && npm install
+	cd ${APP_FOLDER} && npm i
 
 build:
-	cd app && npm run build
+	cd ${APP_FOLDER} && npm run build
+
+run: build
+	cd ${APP_FOLDER} && npm start

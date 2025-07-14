@@ -6,6 +6,8 @@ FROM node:${NODE_VERSION}-alpine AS base
 WORKDIR /usr/src/app
 RUN chown node:node .
 
+ENV OPENAI_API_KEY=
+
 EXPOSE 80
 
 # ******************************************
