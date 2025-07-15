@@ -1,11 +1,11 @@
 {
     "include": [
-        "src/**/*.ts"
+        "src/**/*.ts",
+        "test/**/*.ts"
     ],
     "compilerOptions": {
-        "outDir": "dist",
+        "noEmit": true,
         "target": "es2022",
-        "rootDir": "src",
         "module": "nodenext",
         "moduleResolution": "nodenext",
         "incremental": true,

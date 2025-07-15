@@ -10,3 +10,6 @@ build:
 
 run: build
 	cd ${APP_FOLDER} && npm start
+
+test: build
+	cd ${APP_FOLDER} && npm run test
