@@ -4,7 +4,6 @@ import { setTimeout } from 'timers/promises';
 import { FastifyInstance, FastifyReply, FastifyRequest, FastifyServerOptions } from "fastify";
 import { FromSchema } from 'json-schema-to-ts';
 import OpenAI from 'openai';
-import { VectorStoreFile } from 'openai/resources/vector-stores/files.mjs';
 
 /**
  * The file uploaded to a vector store is not immediately available. It must transit
@@ -16,10 +15,10 @@ import { VectorStoreFile } from 'openai/resources/vector-stores/files.mjs';
  */
 async function pollFileStatusForCompleted(openAIClient: OpenAI, fileId: string, vectorStoreId: string) {
     let vectorStoreFileStatus: OpenAI.VectorStores.Files.VectorStoreFile['status']
-    let i = 0
+    let firstTimePoll = true
     do {
         // after the first time, sleep for 2.5 seconds
-        if (i > 0)
+        if (!firstTimePoll)
             await setTimeout(2500)
 
         const vectorStoreFile = await openAIClient.vectorStores.files.retrieve(
@@ -28,12 +27,12 @@ async function pollFileStatusForCompleted(openAIClient: OpenAI, fileId: string, 
         );
         vectorStoreFileStatus = vectorStoreFile.status
 
-        i++;
+        firstTimePoll = false;
     } while (vectorStoreFileStatus !== 'completed');
 }
 
 
-const uploadSharedFilesResponseBodySchema = {
+const uploadFilesResponseBodySchema = {
     type: 'array',
     items: {
         type: 'object',
@@ -44,14 +43,14 @@ const uploadSharedFilesResponseBodySchema = {
         required: ['id', 'filename'],
     }
 } as const;
-type UploadSharedFilesResponseBodySchema = FromSchema<typeof uploadSharedFilesResponseBodySchema>;
+export type UploadFilesResponseBodySchema = FromSchema<typeof uploadFilesResponseBodySchema>;
 
-async function uploadSharedFiles(
+async function uploadFiles(
+    vectorStoreId: string,
     request: FastifyRequest,
-    reply: FastifyReply<{ Reply: UploadSharedFilesResponseBodySchema }>
+    reply: FastifyReply<{ Reply: UploadFilesResponseBodySchema }>
 ): Promise<void> {
     const openaiClient = request.server.openaiClient
-    const vectorStoredId = request.server.sharedVectorStoreId
 
     const files = await request.saveRequestFiles()
 
@@ -64,13 +63,14 @@ async function uploadSharedFiles(
 
         // attach the file to the shared vector store
         await openaiClient.vectorStores.files.create(
-            vectorStoredId,
+            vectorStoreId,
             {
                 file_id: fileObject.id,
             }
         );
 
-        await pollFileStatusForCompleted(openaiClient, fileObject.id, vectorStoredId)
+        // wait until the file status is completed
+        await pollFileStatusForCompleted(openaiClient, fileObject.id, vectorStoreId)
 
         return fileObject;
     }));
@@ -84,22 +84,99 @@ async function uploadSharedFiles(
 }
 
 
-async function uploadProjectFiles(
+const listFilesResponseBodySchema = {
+    type: 'array',
+    items: {
+        type: 'object',
+        properties: {
+            id: { type: 'string' },
+            filename: { type: 'string' },
+            size: { type: 'string' }
+        },
+        required: ['id', 'filename', 'size'],
+    }
+} as const;
+export type ListFilesResponseBodySchema = FromSchema<typeof listFilesResponseBodySchema>;
+
+async function listFiles(
+    vectorStoreId: string,
     request: FastifyRequest,
+    reply: FastifyReply<{ Reply: ListFilesResponseBodySchema }>
+): Promise<void> {
+    const openaiClient = request.server.openaiClient
+
+    // TODO: currently supports 100 files per vector store, if there are more, aggregate from
+    // the next pages. See `files.iterPages()`.
+    const files = await openaiClient.vectorStores.files.list(vectorStoreId, { limit: 100 });
+
+    // for each file, get info like the filename and size
+    const response = await Promise.all(files.data.map(async (file) => {
+        const fileInfo = await openaiClient.files.retrieve(file.id);
+
+        return {
+            id: fileInfo.id,
+            filename: fileInfo.filename,
+            size: `${fileInfo.bytes} Bytes`
+        }
+    }))
+
+    reply.status(200).send(response)
+}
+
+
+const deleteFileRequestParamsSchema = {
+    type: 'object',
+    properties: {
+        fileId: { type: 'string' }
+    },
+    required: ['fileId'],
+} as const;
+export type DeleteFileRequestParamsSchema = FromSchema<typeof deleteFileRequestParamsSchema>;
+
+async function deleteFile(
+    vectorStoreId: string,
+    request: FastifyRequest<{ Params: DeleteFileRequestParamsSchema }>,
     reply: FastifyReply
 ): Promise<void> {
+    const openaiClient = request.server.openaiClient
+    const fileId = request.params.fileId
 
+    await openaiClient.vectorStores.files.del(vectorStoreId, fileId);
+    await openaiClient.files.del(fileId);
+
+    reply.status(200).send()
 }
 
 
 export default async function routes(fastify: FastifyInstance, options: FastifyServerOptions) {
-    fastify.post('/search-files/shared',
+    fastify.post<{ Reply: UploadFilesResponseBodySchema }>('/search-files/shared',
         {
             schema: {
+                // multi-part content with one file per part
                 response: {
-                    201: uploadSharedFilesResponseBodySchema
+                    201: uploadFilesResponseBodySchema
                 }
             }
         },
-        uploadSharedFiles)
+        async (request, reply) => await uploadFiles(fastify.sharedVectorStoreId, request, reply))
+
+
+    fastify.get<{ Reply: ListFilesResponseBodySchema }>('/search-files/shared',
+        {
+            schema: {
+                response: {
+                    200: listFilesResponseBodySchema
+                }
+            }
+        },
+        async (request, reply) => await listFiles(fastify.sharedVectorStoreId, request, reply))
+
+
+    fastify.delete<{ Params: DeleteFileRequestParamsSchema }>('/search-files/shared/:fileId',
+        {
+            schema: {
+                params: deleteFileRequestParamsSchema
+            }
+        },
+        async (request, reply) => await deleteFile(fastify.sharedVectorStoreId, request, reply))
 }
