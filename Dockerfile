@@ -4,11 +4,17 @@ ARG NODE_VERSION=22
 FROM node:${NODE_VERSION}-alpine AS base
 
 WORKDIR /usr/src/app
-RUN chown node:node .
 
 ENV OPENAI_API_KEY=
 
 EXPOSE 80
+
+RUN <<EOF
+    mkdir -p /var/lib/cecyl/data
+    chown -R node:node . /var/lib/cecyl/data
+EOF
+
+VOLUME ["/var/lib/cecyl/data"]
 
 # ******************************************
 

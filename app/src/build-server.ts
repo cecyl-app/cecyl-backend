@@ -3,13 +3,15 @@ import fastifyPlugin from "fastify-plugin";
 import OpenAI from "openai";
 import fastifyMultipart from "@fastify/multipart";
 
+import filesRoute from './routes/files.js'
+
 export default async function build(opts = {}) {
     const app = fastify(opts);
 
     app.register(fastifyPlugin(openAIConnectionDecorator, { name: 'openAIConnection' }))
     app.register(fastifyPlugin(openAISharedVectorStoreDecorator, { dependencies: ['openAIConnection'] }))
     app.register(fastifyMultipart)
-    // app.register
+    app.register(filesRoute)
 
     return app;
 }
