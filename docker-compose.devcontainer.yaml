@@ -1,0 +1,19 @@
+services:
+  app:
+    build:
+      target: devcontainer
+    ports:
+      - 3000:80
+    volumes:
+      - .:/workspaces/cecyl-backend:cached
+    command: sleep infinity
+
+  mongo-express:
+    image: mongo-express:1.0.2
+    restart: always
+    ports:
+      - 8081:8081
+    env_file: envs/mongo-express.env
+    depends_on:
+      db:
+        condition: service_healthy

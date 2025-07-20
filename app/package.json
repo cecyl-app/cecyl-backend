@@ -31,6 +31,7 @@
         "typescript": "^5.8.3"
     },
     "dependencies": {
+        "@fastify/mongodb": "^9.0.2",
         "@fastify/multipart": "^9.0.3",
         "fastify": "^5.4.0",
         "fastify-plugin": "^5.0.1",

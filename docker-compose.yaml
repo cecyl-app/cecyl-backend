@@ -1,8 +1,23 @@
 services:
-  server:
+  app:
     build:
       context: .
       target: prod
     ports:
       - "3000:80"
-    env_file: .env
+    env_file: envs/app.env
+  
+  db:
+    image: mongo:8.0
+    restart: unless-stopped
+    # TODO: replace with secret
+    ports:
+      - "5000:27017"
+    env_file: envs/db.env
+    healthcheck:
+      test: mongosh --eval 'db.runCommand("ping")' --quiet
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+

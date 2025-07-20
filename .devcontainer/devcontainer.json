@@ -1,11 +1,9 @@
 {
-    "build": {
-        "dockerfile": "../Dockerfile",
-        "target": "devcontainer",
-        "context": ".."
-    },
-    "runArgs": ["--env-file", ".env"],
+    "dockerComposeFile": ["../docker-compose.yaml", "../docker-compose.devcontainer.yaml"],
+    "service": "app",
+    "workspaceFolder": "/workspaces/cecyl-backend",
     "postStartCommand": "make install",
+    "shutdownAction": "stopCompose",
     "customizations": {
         "vscode": {
             "settings": {
