@@ -6,6 +6,7 @@ FROM node:${NODE_VERSION}-alpine AS base
 WORKDIR /usr/src/app
 
 ENV OPENAI_API_KEY=
+ENV DB_CONN_STRING=
 
 EXPOSE 80
 

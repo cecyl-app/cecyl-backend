@@ -8,6 +8,10 @@ services:
       - .:/workspaces/cecyl-backend:cached
     command: sleep infinity
 
+  db:
+    volumes: !override
+      - ./db/init-db.js:/docker-entrypoint-initdb.d/init-db.js:ro
+
   mongo-express:
     image: mongo-express:1.0.2
     restart: always
