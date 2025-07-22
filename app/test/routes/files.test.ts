@@ -3,11 +3,11 @@ import FormData from 'form-data'
 import { Readable } from 'stream';
 
 import build from '../../src/build-server.js'
-import { ListFilesResponseBodySchema, UploadFilesResponseBodySchema } from '../../src/routes/files.js'
+import { ListFilesResponseBody, UploadFilesResponseBody } from '../../src/routes/files.js'
 import * as extendedFastify from '../../src/types/index.js'
 
 describe('search-files', () => {
-    test('given an uploaded shared file, when deleted, then list API does not return it', async () => {
+    test('CRUD workflow', async () => {
         const app = await build()
 
         // upload file
@@ -21,7 +21,7 @@ describe('search-files', () => {
             body: form
         })
 
-        const fileId = uploadFileResponse.json<UploadFilesResponseBodySchema>()[0].id
+        const fileId = uploadFileResponse.json<UploadFilesResponseBody>()[0].id
         console.log(`fileId: ${fileId}`)
 
         // list the uploaded files
@@ -30,7 +30,7 @@ describe('search-files', () => {
             url: '/search-files/shared'
         });
 
-        const fileInfo = listFilesResponse.json<ListFilesResponseBodySchema>()
+        const fileInfo = listFilesResponse.json<ListFilesResponseBody>()
             .find(file => file.id === fileId);
         expect(fileInfo).toBeDefined();
 
@@ -48,7 +48,7 @@ describe('search-files', () => {
             url: '/search-files/shared'
         });
 
-        expect(secondListFilesResponse.json<ListFilesResponseBodySchema>().some(file => file.id === fileId))
+        expect(secondListFilesResponse.json<ListFilesResponseBody>().some(file => file.id === fileId))
             .toBeFalsy();
     }, 30000);
 });

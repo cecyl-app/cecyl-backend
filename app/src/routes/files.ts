@@ -13,7 +13,7 @@ import OpenAI from 'openai';
  * @param fileId file id
  * @param vectorStoreId vector store Id
  */
-async function pollFileStatusForCompleted(openAIClient: OpenAI, fileId: string, vectorStoreId: string) {
+async function pollFileStatusForCompleted(openaiClient: OpenAI, fileId: string, vectorStoreId: string) {
     let vectorStoreFileStatus: OpenAI.VectorStores.Files.VectorStoreFile['status']
     let firstTimePoll = true
     do {
@@ -21,7 +21,7 @@ async function pollFileStatusForCompleted(openAIClient: OpenAI, fileId: string, 
         if (!firstTimePoll)
             await setTimeout(2500)
 
-        const vectorStoreFile = await openAIClient.vectorStores.files.retrieve(
+        const vectorStoreFile = await openaiClient.vectorStores.files.retrieve(
             vectorStoreId,
             fileId
         );
@@ -43,12 +43,18 @@ const uploadFilesResponseBodySchema = {
         required: ['id', 'filename'],
     }
 } as const;
-export type UploadFilesResponseBodySchema = FromSchema<typeof uploadFilesResponseBodySchema>;
+export type UploadFilesResponseBody = FromSchema<typeof uploadFilesResponseBodySchema>;
 
+/**
+ * Upload a new file to the specified vectore store
+ * @param vectorStoreId 
+ * @param request 
+ * @param reply 
+ */
 async function uploadFiles(
     vectorStoreId: string,
     request: FastifyRequest,
-    reply: FastifyReply<{ Reply: UploadFilesResponseBodySchema }>
+    reply: FastifyReply<{ Reply: UploadFilesResponseBody }>
 ): Promise<void> {
     const openaiClient = request.server.openaiClient
 
@@ -96,12 +102,18 @@ const listFilesResponseBodySchema = {
         required: ['id', 'filename', 'size'],
     }
 } as const;
-export type ListFilesResponseBodySchema = FromSchema<typeof listFilesResponseBodySchema>;
+export type ListFilesResponseBody = FromSchema<typeof listFilesResponseBodySchema>;
 
+/**
+ * List files in the specified vectore store
+ * @param vectorStoreId 
+ * @param request 
+ * @param reply 
+ */
 async function listFiles(
     vectorStoreId: string,
     request: FastifyRequest,
-    reply: FastifyReply<{ Reply: ListFilesResponseBodySchema }>
+    reply: FastifyReply<{ Reply: ListFilesResponseBody }>
 ): Promise<void> {
     const openaiClient = request.server.openaiClient
 
@@ -131,11 +143,17 @@ const deleteFileRequestParamsSchema = {
     },
     required: ['fileId'],
 } as const;
-export type DeleteFileRequestParamsSchema = FromSchema<typeof deleteFileRequestParamsSchema>;
+export type DeleteFileRequestParams = FromSchema<typeof deleteFileRequestParamsSchema>;
 
+/**
+ * delete a file from the specified vectore store
+ * @param vectorStoreId 
+ * @param request 
+ * @param reply 
+ */
 async function deleteFile(
     vectorStoreId: string,
-    request: FastifyRequest<{ Params: DeleteFileRequestParamsSchema }>,
+    request: FastifyRequest<{ Params: DeleteFileRequestParams }>,
     reply: FastifyReply
 ): Promise<void> {
     const openaiClient = request.server.openaiClient
@@ -149,7 +167,8 @@ async function deleteFile(
 
 
 export default async function routes(fastify: FastifyInstance, options: FastifyServerOptions) {
-    fastify.post<{ Reply: UploadFilesResponseBodySchema }>('/search-files/shared',
+    fastify.post<{ Reply: UploadFilesResponseBody }>(
+        '/search-files/shared',
         {
             schema: {
                 // multi-part content with one file per part
@@ -161,7 +180,8 @@ export default async function routes(fastify: FastifyInstance, options: FastifyS
         async (request, reply) => await uploadFiles(fastify.sharedVectorStoreId, request, reply))
 
 
-    fastify.get<{ Reply: ListFilesResponseBodySchema }>('/search-files/shared',
+    fastify.get<{ Reply: ListFilesResponseBody }>(
+        '/search-files/shared',
         {
             schema: {
                 response: {
@@ -172,7 +192,8 @@ export default async function routes(fastify: FastifyInstance, options: FastifyS
         async (request, reply) => await listFiles(fastify.sharedVectorStoreId, request, reply))
 
 
-    fastify.delete<{ Params: DeleteFileRequestParamsSchema }>('/search-files/shared/:fileId',
+    fastify.delete<{ Params: DeleteFileRequestParams }>(
+        '/search-files/shared/:fileId',
         {
             schema: {
                 params: deleteFileRequestParamsSchema

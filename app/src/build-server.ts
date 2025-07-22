@@ -2,16 +2,23 @@ import fastify, { FastifyInstance } from "fastify";
 import fastifyPlugin from "fastify-plugin";
 import OpenAI from "openai";
 import fastifyMultipart from "@fastify/multipart";
+import fastifyMongodb from "@fastify/mongodb";
 
-import filesRoute from './routes/files.js'
+import filesRoutes from './routes/files.js'
+import projectsRoutes from './routes/projects.js'
 
 export default async function build(opts = {}) {
     const app = fastify(opts);
 
     app.register(fastifyPlugin(openAIConnectionDecorator, { name: 'openAIConnection' }))
     app.register(fastifyPlugin(openAISharedVectorStoreDecorator, { dependencies: ['openAIConnection'] }))
+    app.register(fastifyMongodb, {
+        forceClose: true,
+        url: process.env['DB_CONN_STRING']
+    })
     app.register(fastifyMultipart)
-    app.register(filesRoute)
+    app.register(filesRoutes)
+    app.register(projectsRoutes)
 
     return app;
 }
