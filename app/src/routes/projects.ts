@@ -57,6 +57,46 @@ async function createProject(
 }
 
 
+const listProjectsResponseBodySchema = {
+    type: 'array',
+    items: {
+        type: 'object',
+        properties: {
+            id: { type: 'string' },
+            name: { type: 'string' }
+        },
+        required: ['id', 'name']
+    }
+} as const;
+export type ListProjectsResponseBody = FromSchema<typeof listProjectsResponseBodySchema>;
+
+/**
+ * List all the projects
+ * @param request 
+ * @param reply 
+ */
+async function listProjects(
+    request: FastifyRequest,
+    reply: FastifyReply<{ Reply: ListProjectsResponseBody }>
+): Promise<void> {
+    const mongo = request.server.mongo
+
+    const projects = mongo.db.collection<Project>(PROJECTS_COLLECTION)
+
+    const allProjectsCursor = projects.find({}, projectFields<Project>('_id', 'name'))
+
+    let result: { id: string, name: string }[] = []
+    for await (const project of allProjectsCursor) {
+        result.push({
+            id: project._id.toString(),
+            name: project.name
+        })
+    }
+
+    reply.status(200).send(result)
+}
+
+
 const getProjectRequestParamsSchema = {
     type: 'object',
     properties: {
@@ -156,6 +196,18 @@ export default async function routes(fastify: FastifyInstance, options: FastifyS
             }
         },
         createProject
+    )
+
+    fastify.get<{ Reply: ListProjectsResponseBody }>(
+        '/projects',
+        {
+            schema: {
+                response: {
+                    200: listProjectsResponseBodySchema,
+                }
+            }
+        },
+        listProjects
     )
 
     fastify.get<{ Params: GetProjectRequestParams, Reply: GetProjectResponseBody }>(
