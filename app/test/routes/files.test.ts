@@ -1,5 +1,4 @@
 import { describe, expect, test, beforeAll, afterAll } from '@jest/globals';
-import { beforeEach, afterEach } from 'node:test';
 import FormData from 'form-data'
 import { Readable } from 'stream';
 import { FastifyInstance } from 'fastify';
@@ -18,6 +17,11 @@ beforeAll(async () => {
             level: 'info'
         }
     });
+})
+
+
+afterAll(async () => {
+    await app.close()
 })
 
 

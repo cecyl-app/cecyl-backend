@@ -29,7 +29,7 @@ async function openAIConnectionDecorator(fastify, opts) {
 
 async function openAISharedVectorStoreDecorator(fastify: FastifyInstance, opts) {
     const SHARED_VECTOR_STORE_NAME = "Shared files";
-    // get only the first one created, which is the shared one
+    // get only the first 10 vector stores created, the shared one is assumed to be among them
     const vectorStores = await fastify.openaiClient.vectorStores.list({ limit: 10, order: "asc" });
 
     let sharedVectorStore = vectorStores.data.find(vs => vs.name === SHARED_VECTOR_STORE_NAME);

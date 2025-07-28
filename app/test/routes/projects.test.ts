@@ -1,4 +1,4 @@
-import { describe, expect, test, beforeAll } from '@jest/globals';
+import { describe, expect, test, beforeAll, afterAll } from '@jest/globals';
 import { FastifyInstance } from 'fastify';
 
 import build from '../../src/build-server.js'
@@ -15,6 +15,11 @@ beforeAll(async () => {
             level: 'info'
         }
     });
+})
+
+
+afterAll(async () => {
+    await app.close()
 })
 
 
