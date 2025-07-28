@@ -4,6 +4,15 @@ import { setTimeout } from 'timers/promises';
 import { FastifyInstance, FastifyReply, FastifyRequest, FastifyServerOptions } from "fastify";
 import { FromSchema } from 'json-schema-to-ts';
 import OpenAI from 'openai';
+import { FastifyMongoObject, ObjectId } from "@fastify/mongodb";
+
+import { Project } from '../types/mongo.js';
+import constants from "../constants.js";
+import { projectFields } from '../utils/mongo-utils.js';
+
+type Mongo = FastifyMongoObject
+
+const PROJECTS_COLLECTION = constants.db.collections.PROJECTS
 
 /**
  * The file uploaded to a vector store is not immediately available. It must transit
@@ -31,6 +40,28 @@ async function pollFileStatusForCompleted(openaiClient: OpenAI, fileId: string, 
     } while (vectorStoreFileStatus !== 'completed');
 }
 
+/**
+ * extract the vector store id from the project data
+ * @param projectId 
+ */
+async function getProjectVectorStore(mongo: Mongo, projectId: string): Promise<string> {
+    const projects = mongo.db.collection<Project>(PROJECTS_COLLECTION)
+
+    const project = await projects.findOne({ _id: new ObjectId(projectId) }, projectFields<Project>('vectorStore'))
+
+    const vectorStoreId = project.vectorStore
+    return vectorStoreId
+}
+
+
+const uploadProjectFilesRequestParamsSchema = {
+    type: 'object',
+    properties: {
+        projectId: { type: 'string' }
+    },
+    required: ['projectId']
+} as const;
+export type UploadProjectFilesRequestParams = FromSchema<typeof uploadProjectFilesRequestParamsSchema>;
 
 const uploadFilesResponseBodySchema = {
     type: 'array',
@@ -90,6 +121,15 @@ async function uploadFiles(
 }
 
 
+const listProjectFilesRequestParamsSchema = {
+    type: 'object',
+    properties: {
+        projectId: { type: 'string' }
+    },
+    required: ['projectId']
+} as const;
+export type ListProjectFilesRequestParams = FromSchema<typeof listProjectFilesRequestParamsSchema>;
+
 const listFilesResponseBodySchema = {
     type: 'array',
     items: {
@@ -136,14 +176,24 @@ async function listFiles(
 }
 
 
-const deleteFileRequestParamsSchema = {
+const deleteProjectFileRequestParamsSchema = {
+    type: 'object',
+    properties: {
+        projectId: { type: 'string' },
+        fileId: { type: 'string' }
+    },
+    required: ['fileId', 'projectId'],
+} as const;
+export type DeleteProjectFileRequestParams = FromSchema<typeof deleteProjectFileRequestParamsSchema>;
+
+const deleteSharedFileRequestParamsSchema = {
     type: 'object',
     properties: {
         fileId: { type: 'string' }
     },
     required: ['fileId'],
 } as const;
-export type DeleteFileRequestParams = FromSchema<typeof deleteFileRequestParamsSchema>;
+export type DeleteSharedFileRequestParams = FromSchema<typeof deleteSharedFileRequestParamsSchema>;
 
 /**
  * delete a file from the specified vectore store
@@ -153,7 +203,7 @@ export type DeleteFileRequestParams = FromSchema<typeof deleteFileRequestParamsS
  */
 async function deleteFile(
     vectorStoreId: string,
-    request: FastifyRequest<{ Params: DeleteFileRequestParams }>,
+    request: FastifyRequest<{ Params: DeleteSharedFileRequestParams | DeleteProjectFileRequestParams }>,
     reply: FastifyReply
 ): Promise<void> {
     const openaiClient = request.server.openaiClient
@@ -167,6 +217,9 @@ async function deleteFile(
 
 
 export default async function routes(fastify: FastifyInstance, options: FastifyServerOptions) {
+    // *********************************************
+    // APIs for search files in the shared vector store
+    // *********************************************
     fastify.post<{ Reply: UploadFilesResponseBody }>(
         '/search-files/shared',
         {
@@ -192,12 +245,61 @@ export default async function routes(fastify: FastifyInstance, options: FastifyS
         async (request, reply) => await listFiles(fastify.sharedVectorStoreId, request, reply))
 
 
-    fastify.delete<{ Params: DeleteFileRequestParams }>(
+    fastify.delete<{ Params: DeleteSharedFileRequestParams }>(
         '/search-files/shared/:fileId',
         {
             schema: {
-                params: deleteFileRequestParamsSchema
+                params: deleteSharedFileRequestParamsSchema
             }
         },
-        async (request, reply) => await deleteFile(fastify.sharedVectorStoreId, request, reply))
+        async (request, reply) => await deleteFile(fastify.sharedVectorStoreId, request, reply));
+
+
+    // *********************************************
+    // APIs for search files in the project vector store
+    // *********************************************
+    fastify.post<{ Params: UploadProjectFilesRequestParams, Reply: UploadFilesResponseBody }>(
+        '/projects/:projectId/search-files',
+        {
+            schema: {
+                params: uploadProjectFilesRequestParamsSchema,
+                // multi-part content with one file per part
+                response: {
+                    201: uploadFilesResponseBodySchema
+                }
+            }
+        },
+        async (request, reply) => {
+            const vectorStoreId = await getProjectVectorStore(fastify.mongo, request.params.projectId)
+            await uploadFiles(vectorStoreId, request, reply)
+        })
+
+
+    fastify.get<{ Params: ListProjectFilesRequestParams, Reply: ListFilesResponseBody }>(
+        '/projects/:projectId/search-files',
+        {
+            schema: {
+                params: listProjectFilesRequestParamsSchema,
+                response: {
+                    200: listFilesResponseBodySchema
+                }
+            }
+        },
+        async (request, reply) => {
+            const vectorStoreId = await getProjectVectorStore(fastify.mongo, request.params.projectId)
+            await listFiles(vectorStoreId, request, reply)
+        })
+
+
+    fastify.delete<{ Params: DeleteProjectFileRequestParams }>(
+        '/projects/:projectId/search-files/:fileId',
+        {
+            schema: {
+                params: deleteProjectFileRequestParamsSchema
+            }
+        },
+        async (request, reply) => {
+            const vectorStoreId = await getProjectVectorStore(fastify.mongo, request.params.projectId)
+            await deleteFile(vectorStoreId, request, reply)
+        })
 }

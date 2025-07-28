@@ -22,7 +22,7 @@ JEST_REGEX ?= .*
 # Parameters: \
 # JEST_REGEX: regex to select the files to run. Default: .*
 test: build
-	cd ${APP_FOLDER} && npx jest "${JEST_REGEX}"
+	cd ${APP_FOLDER} && npx jest --detectOpenHandles "${JEST_REGEX}"
 
 
 # Parameters: \

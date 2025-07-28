@@ -1,44 +1,43 @@
-import { describe, expect, test } from '@jest/globals';
-import FormData from 'form-data'
-import { Readable } from 'stream';
+import { describe, expect, test, beforeAll } from '@jest/globals';
+import { FastifyInstance } from 'fastify';
 
 import build from '../../src/build-server.js'
 import { CreateProjectResponseBody, GetProjectResponseBody, ListProjectsResponseBody } from '../../src/routes/projects.js'
 import * as extendedFastify from '../../src/types/index.js'
+import { RequestExecutor } from '../test-utils/RequestExecutor.js';
+
+
+let app: FastifyInstance
+
+beforeAll(async () => {
+    app = await build({
+        logger: {
+            level: 'info'
+        }
+    });
+})
+
 
 describe('projects', () => {
     test('CRUD workflow', async () => {
-        const app = await build()
         const TEST_PROJECT_NAME = 'test-project'
         const TEST_PROJECT_CONTEXT = 'test-context'
 
         // create project
-        const createProjectResponse = await app.inject({
-            method: 'POST',
-            url: '/projects',
-            body: {
-                name: TEST_PROJECT_NAME,
-                context: TEST_PROJECT_CONTEXT
-            }
-        })
+        const createProjectResponse = await RequestExecutor.createProject(app,
+            TEST_PROJECT_NAME, TEST_PROJECT_CONTEXT)
 
         const projectId = createProjectResponse.json<CreateProjectResponseBody>().id
         console.log(`projectId: ${projectId}`)
 
         // list projects
-        const listProjectsResponse = await app.inject({
-            method: 'GET',
-            url: '/projects'
-        })
+        const listProjectsResponse = await RequestExecutor.listProjects(app)
 
         let projects = listProjectsResponse.json<ListProjectsResponseBody>()
         expect(projects.map(p => p.id)).toContain(projectId)
 
         // get the project info
-        const getProjectResponse = await app.inject({
-            method: 'GET',
-            url: `/projects/${projectId}`
-        });
+        const getProjectResponse = await RequestExecutor.getProjectInfo(app, projectId)
 
         const projectInfo = getProjectResponse.json<GetProjectResponseBody>()
         expect(projectInfo).toMatchObject({
@@ -48,16 +47,10 @@ describe('projects', () => {
         });
 
         // delete the project
-        await app.inject({
-            method: 'DELETE',
-            url: `/projects/${projectId}`
-        });
+        await RequestExecutor.deleteProject(app, projectId)
 
         // list projects after delete
-        const listProjectsResponse2 = await app.inject({
-            method: 'GET',
-            url: '/projects'
-        })
+        const listProjectsResponse2 = await RequestExecutor.listProjects(app)
 
         projects = listProjectsResponse2.json<ListProjectsResponseBody>()
         expect(projects.map(p => p.id)).not.toContain(projectId)
