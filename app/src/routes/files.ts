@@ -8,7 +8,7 @@ import { FastifyMongoObject, ObjectId } from "@fastify/mongodb";
 
 import { Project } from '../types/mongo.js';
 import constants from "../constants.js";
-import { projectFields } from '../utils/mongo-utils.js';
+import { buildProjectionOption } from '../utils/mongo-utils.js';
 
 type Mongo = FastifyMongoObject
 
@@ -47,7 +47,7 @@ async function pollFileStatusForCompleted(openaiClient: OpenAI, fileId: string, 
 async function getProjectVectorStore(mongo: Mongo, projectId: string): Promise<string> {
     const projects = mongo.db.collection<Project>(PROJECTS_COLLECTION)
 
-    const project = await projects.findOne({ _id: new ObjectId(projectId) }, projectFields<Project>('vectorStore'))
+    const project = await projects.findOne({ _id: new ObjectId(projectId) }, buildProjectionOption<Project>('vectorStore'))
 
     const vectorStoreId = project.vectorStore
     return vectorStoreId

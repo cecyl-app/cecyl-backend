@@ -3,7 +3,7 @@ import { FromSchema } from "json-schema-to-ts";
 
 import constants from "../constants.js";
 import { Project } from "../types/mongo.js";
-import { projectFields } from "../utils/mongo-utils.js";
+import { buildProjectionOption } from "../utils/mongo-utils.js";
 
 const PROJECTS_COLLECTION = constants.db.collections.PROJECTS
 
@@ -83,7 +83,7 @@ async function listProjects(
 
     const projects = mongo.db.collection<Project>(PROJECTS_COLLECTION)
 
-    const allProjectsCursor = projects.find({}, projectFields<Project>('_id', 'name'))
+    const allProjectsCursor = projects.find({}, buildProjectionOption<Project>('_id', 'name'))
 
     let result: { id: string, name: string }[] = []
     for await (const project of allProjectsCursor) {
@@ -138,7 +138,7 @@ async function getProject(
 
     const project = await projects.findOne(
         { _id: new mongo.ObjectId(projectId) },
-        projectFields<Project>('name', 'context', 'sections')
+        buildProjectionOption<Project>('name', 'context', 'sections')
     )
 
     const result = {
@@ -175,7 +175,7 @@ async function deleteProject(
     const projectFilter = { _id: new mongo.ObjectId(projectId) }
 
     const projects = mongo.db.collection<Project>(PROJECTS_COLLECTION);
-    const vectorStore = (await projects.findOne(projectFilter, projectFields<Project>('vectorStore'))).vectorStore
+    const vectorStore = (await projects.findOne(projectFilter, buildProjectionOption<Project>('vectorStore'))).vectorStore
 
     await projects.deleteOne(projectFilter)
 
