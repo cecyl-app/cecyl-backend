@@ -1,4 +1,4 @@
-import { FastifyInstance, FastifyRegisterOptions, FastifyReply, FastifyRequest, FastifyServerOptions } from "fastify";
+import { FastifyInstance, FastifyReply, FastifyRequest, FastifyServerOptions } from "fastify";
 import { FromSchema } from "json-schema-to-ts";
 
 import constants from "../constants.js";
@@ -48,6 +48,7 @@ async function createProject(
     const project = {
         ...projectInfo,
         vectorStore: projectVectorStore.id,
+        lastOpenAIResponseId: null,
         sections: []
     }
 
@@ -85,7 +86,7 @@ async function listProjects(
 
     const allProjectsCursor = projects.find({}, buildProjectionOption<Project>('_id', 'name'))
 
-    let result: { id: string, name: string }[] = []
+    const result: { id: string, name: string }[] = []
     for await (const project of allProjectsCursor) {
         result.push({
             id: project._id.toString(),
@@ -184,7 +185,7 @@ async function deleteProject(
     reply.status(200).send()
 }
 
-export default async function routes(fastify: FastifyInstance, options: FastifyServerOptions) {
+export default async function routes(fastify: FastifyInstance, _options: FastifyServerOptions) {
     fastify.post<{ Body: CreateProjectRequestBody, Reply: CreateProjectResponseBody }>(
         '/projects',
         {

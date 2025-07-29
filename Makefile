@@ -11,7 +11,7 @@ install:
 
 
 build:
-	cd ${APP_FOLDER} && npm run build
+	cd ${APP_FOLDER} && npx eslint src/ test/ && npm run build
 
 
 run: build

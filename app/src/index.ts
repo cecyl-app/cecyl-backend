@@ -6,7 +6,7 @@ const server = await build({
     }
 })
 
-server.listen({ port: 80, host: '0.0.0.0' }, (err, address) => {
+server.listen({ port: 80, host: '0.0.0.0' }, (err) => {
     if (err) {
         server.log.error(err)
         process.exit(1)

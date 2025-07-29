@@ -37,7 +37,7 @@ export class ProjectRepository {
             buildProjectionOption<Project>('_id', 'name')
         )
 
-        let result: { id: string, name: string }[] = []
+        const result: { id: string, name: string }[] = []
         for await (const project of allProjectsCursor) {
             result.push({
                 id: project._id.toString(),

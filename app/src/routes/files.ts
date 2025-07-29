@@ -216,7 +216,7 @@ async function deleteFile(
 }
 
 
-export default async function routes(fastify: FastifyInstance, options: FastifyServerOptions) {
+export default async function routes(fastify: FastifyInstance, _options: FastifyServerOptions) {
     // *********************************************
     // APIs for search files in the shared vector store
     // *********************************************

@@ -1,4 +1,4 @@
-import fastify, { FastifyInstance } from "fastify";
+import fastify, { FastifyInstance, FastifyServerOptions } from "fastify";
 import fastifyPlugin from "fastify-plugin";
 import OpenAI from "openai";
 import fastifyMultipart from "@fastify/multipart";
@@ -23,11 +23,11 @@ export default async function build(opts = {}) {
     return app;
 }
 
-async function openAIConnectionDecorator(fastify, opts) {
+async function openAIConnectionDecorator(fastify: FastifyInstance, _opts: FastifyServerOptions) {
     fastify.decorate('openaiClient', new OpenAI())
 }
 
-async function openAISharedVectorStoreDecorator(fastify: FastifyInstance, opts) {
+async function openAISharedVectorStoreDecorator(fastify: FastifyInstance, _opts: FastifyServerOptions) {
     const SHARED_VECTOR_STORE_NAME = "Shared files";
     // get only the first 10 vector stores created, the shared one is assumed to be among them
     const vectorStores = await fastify.openaiClient.vectorStores.list({ limit: 10, order: "asc" });
