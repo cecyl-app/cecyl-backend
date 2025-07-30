@@ -3,7 +3,6 @@ import { FastifyInstance } from 'fastify';
 
 import build from '../../src/build-server.js'
 import { CreateProjectResponseBody, GetProjectResponseBody, ListProjectsResponseBody } from '../../src/routes/projects.js'
-import * as extendedFastify from '../../src/types/index.js'
 import { RequestExecutor } from '../test-utils/RequestExecutor.js';
 
 

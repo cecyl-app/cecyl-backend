@@ -10,9 +10,9 @@ type MongoClient = mongodb.MongoClient
 
 type ProjectFields = Parameters<typeof buildProjectionOption<Project>>[0]
 
-type ProjectInfo = Pick<Project, 'name' | 'context' | 'vectorStore'>
+type ProjectInfo = Pick<Project, 'name' | 'context' | 'vectorStoreId'>
 
-export class ProjectRepository {
+export class ProjectsRepository {
     projects: mongodb.Collection<Project>
 
     constructor(mongoClient: MongoClient) {
@@ -23,7 +23,7 @@ export class ProjectRepository {
     async createProject(projectInfo: ProjectInfo): Promise<{ id: string }> {
         const project = {
             ...projectInfo,
-            lastOpenAIResponseId: null,
+            lastOpenAIResponseId: undefined,
             sections: []
         }
         const result = await this.projects.insertOne(project)
@@ -48,7 +48,7 @@ export class ProjectRepository {
         return result
     }
 
-    async getProject(id: string, ...projectionFields: ProjectFields[]): Promise<Project> {
+    async getProject(id: string, projectionFields: ProjectFields[]): Promise<Project | null> {
         const project = await this.projects.findOne(
             { _id: new ObjectId(id) },
             buildProjectionOption<Project>(...projectionFields)

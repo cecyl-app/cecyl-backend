@@ -1,56 +1,146 @@
 import fs from 'fs'
-import { setTimeout } from 'timers/promises';
 
-import { FastifyInstance, FastifyReply, FastifyRequest, FastifyServerOptions } from "fastify";
+import { FastifyInstance, FastifyServerOptions } from "fastify";
 import { FromSchema } from 'json-schema-to-ts';
-import OpenAI from 'openai';
-import { FastifyMongoObject, ObjectId } from "@fastify/mongodb";
 
-import { Project } from '../types/mongo.js';
-import constants from "../constants.js";
-import { buildProjectionOption } from '../utils/mongo-utils.js';
+import { SavedMultipartFile } from '@fastify/multipart';
+import { OpenAIService } from '../third-party/OpenAIService.js';
+import { ProjectsRepository } from '../repositories/ProjectsRepository.js';
+import { VectorStoreId } from '../types/openAI.js';
 
-type Mongo = FastifyMongoObject
 
-const PROJECTS_COLLECTION = constants.db.collections.PROJECTS
+export default function routes(fastify: FastifyInstance, _options: FastifyServerOptions) {
+    const projectsRepo = new ProjectsRepository(fastify.mongo.client)
+    const openAIService = new OpenAIService(fastify.openaiClient)
 
-/**
- * The file uploaded to a vector store is not immediately available. It must transit
- * to the `completed` state in order to be used. This function polls every 2.5 seconds
- * if the file is in the `completed` state
- * @param openAIClient OpenAI client
- * @param fileId file id
- * @param vectorStoreId vector store Id
- */
-async function pollFileStatusForCompleted(openaiClient: OpenAI, fileId: string, vectorStoreId: string) {
-    let vectorStoreFileStatus: OpenAI.VectorStores.Files.VectorStoreFile['status']
-    let firstTimePoll = true
-    do {
-        // after the first time, sleep for 2.5 seconds
-        if (!firstTimePoll)
-            await setTimeout(2500)
+    // *********************************************
+    // APIs for search files in the shared vector store
+    // *********************************************
+    fastify.post<{ Reply: UploadFilesResponseBody }>(
+        '/search-files/shared',
+        {
+            schema: {
+                // multi-part content with one file per part
+                response: {
+                    201: uploadFilesResponseBodySchema
+                }
+            }
+        },
+        async (request, reply) => {
+            const files = await request.saveRequestFiles()
 
-        const vectorStoreFile = await openaiClient.vectorStores.files.retrieve(
-            vectorStoreId,
-            fileId
-        );
-        vectorStoreFileStatus = vectorStoreFile.status
+            const result = await uploadFiles(files, fastify.sharedVectorStoreId, openAIService)
 
-        firstTimePoll = false;
-    } while (vectorStoreFileStatus !== 'completed');
-}
+            reply.status(201).send(result)
+        })
 
-/**
- * extract the vector store id from the project data
- * @param projectId 
- */
-async function getProjectVectorStore(mongo: Mongo, projectId: string): Promise<string> {
-    const projects = mongo.db.collection<Project>(PROJECTS_COLLECTION)
 
-    const project = await projects.findOne({ _id: new ObjectId(projectId) }, buildProjectionOption<Project>('vectorStore'))
+    fastify.get<{ Reply: ListFilesResponseBody }>(
+        '/search-files/shared',
+        {
+            schema: {
+                response: {
+                    200: listFilesResponseBodySchema
+                }
+            }
+        },
+        async (request, reply) => {
+            const result = await listFiles(fastify.sharedVectorStoreId, openAIService)
 
-    const vectorStoreId = project.vectorStore
-    return vectorStoreId
+            reply.status(200).send(result)
+        })
+
+
+    fastify.delete<{ Params: DeleteSharedFileRequestParams }>(
+        '/search-files/shared/:fileId',
+        {
+            schema: {
+                params: deleteSharedFileRequestParamsSchema
+            }
+        },
+        async (request, reply) => {
+            const fileId = request.params.fileId
+
+            await deleteFile(fastify.sharedVectorStoreId, fileId, openAIService);
+
+            reply.status(200).send()
+        })
+
+
+    // *********************************************
+    // APIs for search files in the project vector store
+    // *********************************************
+    fastify.post<{ Params: UploadProjectFilesRequestParams, Reply: UploadFilesResponseBody }>(
+        '/projects/:projectId/search-files',
+        {
+            schema: {
+                params: uploadProjectFilesRequestParamsSchema,
+                // multi-part content with one file per part
+                response: {
+                    201: uploadFilesResponseBodySchema
+                }
+            }
+        },
+        async (request, reply) => {
+            const vectorStoreId = await getVectorStoreIdFromProjectId(request.params.projectId, projectsRepo)
+
+            if (vectorStoreId === null) {
+                reply.status(404).send()
+            }
+            else {
+                const files = await request.saveRequestFiles()
+
+                const result = await uploadFiles(files, vectorStoreId, openAIService)
+
+                reply.status(201).send(result)
+            }
+        })
+
+
+    fastify.get<{ Params: ListProjectFilesRequestParams, Reply: ListFilesResponseBody }>(
+        '/projects/:projectId/search-files',
+        {
+            schema: {
+                params: listProjectFilesRequestParamsSchema,
+                response: {
+                    200: listFilesResponseBodySchema
+                }
+            }
+        },
+        async (request, reply) => {
+            const vectorStoreId = await getVectorStoreIdFromProjectId(request.params.projectId, projectsRepo)
+
+            if (vectorStoreId === null) {
+                reply.status(404).send()
+            }
+            else {
+                const result = await listFiles(vectorStoreId, openAIService)
+
+                reply.status(200).send(result)
+            }
+        })
+
+
+    fastify.delete<{ Params: DeleteProjectFileRequestParams }>(
+        '/projects/:projectId/search-files/:fileId',
+        {
+            schema: {
+                params: deleteProjectFileRequestParamsSchema
+            }
+        },
+        async (request, reply) => {
+            const fileId = request.params.fileId
+            const vectorStoreId = await getVectorStoreIdFromProjectId(request.params.projectId, projectsRepo)
+
+            if (vectorStoreId === null) {
+                reply.status(404).send()
+            }
+            else {
+                await deleteFile(vectorStoreId, fileId, openAIService);
+
+                reply.status(200).send()
+            }
+        })
 }
 
 
@@ -83,41 +173,24 @@ export type UploadFilesResponseBody = FromSchema<typeof uploadFilesResponseBodyS
  * @param reply 
  */
 async function uploadFiles(
+    files: SavedMultipartFile[],
     vectorStoreId: string,
-    request: FastifyRequest,
-    reply: FastifyReply<{ Reply: UploadFilesResponseBody }>
-): Promise<void> {
-    const openaiClient = request.server.openaiClient
-
-    const files = await request.saveRequestFiles()
-
+    openAIService: OpenAIService
+): Promise<UploadFilesResponseBody> {
     const fileObjects = await Promise.all(files.map(async (f) => {
-        // upload file to OpenAI
-        const fileObject = await openaiClient.files.create({
-            file: fs.createReadStream(f.filepath),
-            purpose: "assistants",
-        });
+        const fileObject = await openAIService.uploadFile(fs.createReadStream(f.filepath))
 
-        // attach the file to the shared vector store
-        await openaiClient.vectorStores.files.create(
-            vectorStoreId,
-            {
-                file_id: fileObject.id,
-            }
-        );
-
-        // wait until the file status is completed
-        await pollFileStatusForCompleted(openaiClient, fileObject.id, vectorStoreId)
+        await openAIService.attachFileToVectorStore(vectorStoreId, fileObject.id, true)
 
         return fileObject;
     }));
 
-    const response = fileObjects.map(fo => ({
+    const result = fileObjects.map(fo => ({
         id: fo.id,
         filename: fo.filename
     }))
 
-    reply.status(201).send(response)
+    return result
 }
 
 
@@ -145,25 +218,19 @@ const listFilesResponseBodySchema = {
 export type ListFilesResponseBody = FromSchema<typeof listFilesResponseBodySchema>;
 
 /**
- * List files in the specified vectore store
+ * List files in the specified vector store
  * @param vectorStoreId 
  * @param request 
  * @param reply 
  */
 async function listFiles(
     vectorStoreId: string,
-    request: FastifyRequest,
-    reply: FastifyReply<{ Reply: ListFilesResponseBody }>
-): Promise<void> {
-    const openaiClient = request.server.openaiClient
+    openAIService: OpenAIService
+): Promise<ListFilesResponseBody> {
+    const files = await openAIService.listFilesInVectorStore(vectorStoreId)
 
-    // TODO: currently supports 100 files per vector store, if there are more, aggregate from
-    // the next pages. See `files.iterPages()`.
-    const files = await openaiClient.vectorStores.files.list(vectorStoreId, { limit: 100 });
-
-    // for each file, get info like the filename and size
-    const response = await Promise.all(files.data.map(async (file) => {
-        const fileInfo = await openaiClient.files.retrieve(file.id);
+    const result = await Promise.all(files.map(async (file) => {
+        const fileInfo = await openAIService.getFileInfo(file.id);
 
         return {
             id: fileInfo.id,
@@ -172,7 +239,7 @@ async function listFiles(
         }
     }))
 
-    reply.status(200).send(response)
+    return result
 }
 
 
@@ -203,103 +270,19 @@ export type DeleteSharedFileRequestParams = FromSchema<typeof deleteSharedFileRe
  */
 async function deleteFile(
     vectorStoreId: string,
-    request: FastifyRequest<{ Params: DeleteSharedFileRequestParams | DeleteProjectFileRequestParams }>,
-    reply: FastifyReply
+    fileId: string,
+    openAIService: OpenAIService
 ): Promise<void> {
-    const openaiClient = request.server.openaiClient
-    const fileId = request.params.fileId
-
-    await openaiClient.vectorStores.files.del(vectorStoreId, fileId);
-    await openaiClient.files.del(fileId);
-
-    reply.status(200).send()
+    await openAIService.removeFileFromVector(fileId, vectorStoreId)
+    await openAIService.deleteFile(fileId)
 }
 
 
-export default async function routes(fastify: FastifyInstance, _options: FastifyServerOptions) {
-    // *********************************************
-    // APIs for search files in the shared vector store
-    // *********************************************
-    fastify.post<{ Reply: UploadFilesResponseBody }>(
-        '/search-files/shared',
-        {
-            schema: {
-                // multi-part content with one file per part
-                response: {
-                    201: uploadFilesResponseBodySchema
-                }
-            }
-        },
-        async (request, reply) => await uploadFiles(fastify.sharedVectorStoreId, request, reply))
+async function getVectorStoreIdFromProjectId(
+    projectId: string,
+    projectsRepo: ProjectsRepository
+): Promise<VectorStoreId | null> {
+    const project = await projectsRepo.getProject(projectId, ['vectorStoreId'])
 
-
-    fastify.get<{ Reply: ListFilesResponseBody }>(
-        '/search-files/shared',
-        {
-            schema: {
-                response: {
-                    200: listFilesResponseBodySchema
-                }
-            }
-        },
-        async (request, reply) => await listFiles(fastify.sharedVectorStoreId, request, reply))
-
-
-    fastify.delete<{ Params: DeleteSharedFileRequestParams }>(
-        '/search-files/shared/:fileId',
-        {
-            schema: {
-                params: deleteSharedFileRequestParamsSchema
-            }
-        },
-        async (request, reply) => await deleteFile(fastify.sharedVectorStoreId, request, reply));
-
-
-    // *********************************************
-    // APIs for search files in the project vector store
-    // *********************************************
-    fastify.post<{ Params: UploadProjectFilesRequestParams, Reply: UploadFilesResponseBody }>(
-        '/projects/:projectId/search-files',
-        {
-            schema: {
-                params: uploadProjectFilesRequestParamsSchema,
-                // multi-part content with one file per part
-                response: {
-                    201: uploadFilesResponseBodySchema
-                }
-            }
-        },
-        async (request, reply) => {
-            const vectorStoreId = await getProjectVectorStore(fastify.mongo, request.params.projectId)
-            await uploadFiles(vectorStoreId, request, reply)
-        })
-
-
-    fastify.get<{ Params: ListProjectFilesRequestParams, Reply: ListFilesResponseBody }>(
-        '/projects/:projectId/search-files',
-        {
-            schema: {
-                params: listProjectFilesRequestParamsSchema,
-                response: {
-                    200: listFilesResponseBodySchema
-                }
-            }
-        },
-        async (request, reply) => {
-            const vectorStoreId = await getProjectVectorStore(fastify.mongo, request.params.projectId)
-            await listFiles(vectorStoreId, request, reply)
-        })
-
-
-    fastify.delete<{ Params: DeleteProjectFileRequestParams }>(
-        '/projects/:projectId/search-files/:fileId',
-        {
-            schema: {
-                params: deleteProjectFileRequestParamsSchema
-            }
-        },
-        async (request, reply) => {
-            const vectorStoreId = await getProjectVectorStore(fastify.mongo, request.params.projectId)
-            await deleteFile(vectorStoreId, request, reply)
-        })
+    return project?.vectorStoreId ?? null
 }

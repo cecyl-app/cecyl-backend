@@ -1,11 +1,88 @@
-import { FastifyInstance, FastifyReply, FastifyRequest, FastifyServerOptions } from "fastify";
+import { FastifyInstance, FastifyServerOptions } from "fastify";
 import { FromSchema } from "json-schema-to-ts";
 
-import constants from "../constants.js";
-import { Project } from "../types/mongo.js";
-import { buildProjectionOption } from "../utils/mongo-utils.js";
+import { ProjectsRepository } from "../repositories/ProjectsRepository.js";
+import { OpenAIService } from "../third-party/OpenAIService.js";
 
-const PROJECTS_COLLECTION = constants.db.collections.PROJECTS
+
+export default function routes(fastify: FastifyInstance, _options: FastifyServerOptions) {
+    const projectRepo = new ProjectsRepository(fastify.mongo.client)
+    const openAIService = new OpenAIService(fastify.openaiClient)
+
+    fastify.post<{ Body: CreateProjectRequestBody, Reply: CreateProjectResponseBody }>(
+        '/projects',
+        {
+            schema: {
+                body: createProjectRequestBodySchema,
+                response: {
+                    201: createProjectResponseBodySchema,
+                },
+            }
+        },
+        async (request, reply) => {
+            const projectInfo = request.body
+            const result = await createProject(projectInfo, projectRepo, openAIService)
+
+            reply.status(201).send(result)
+        }
+    )
+
+    fastify.get<{ Reply: ListProjectsResponseBody }>(
+        '/projects',
+        {
+            schema: {
+                response: {
+                    200: listProjectsResponseBodySchema,
+                }
+            }
+        },
+        async (request, reply) => {
+            const result = await listProjects(projectRepo)
+
+            reply.status(200).send(result)
+        }
+    )
+
+    fastify.get<{ Params: GetProjectRequestParams, Reply: GetProjectResponseBody }>(
+        '/projects/:projectId',
+        {
+            schema: {
+                params: getProjectRequestParamsSchema,
+                response: {
+                    200: getProjectResponseBodySchema,
+                },
+            }
+        },
+        async (request, reply) => {
+            const projectId = request.params.projectId
+            const result = await getProject(projectId, projectRepo)
+
+            if (result === null)
+                reply.status(404).send()
+            else
+                reply.status(200).send(result)
+        }
+    )
+
+    fastify.delete<{ Params: DeleteProjectRequestParams }>(
+        '/projects/:projectId',
+        {
+            schema: {
+                params: deleteProjectRequestParamsSchema
+            }
+        },
+        async (request, reply) => {
+            const projectId = request.params.projectId
+            const result = await deleteProject(projectId, projectRepo, openAIService)
+
+            if (result)
+                reply.status(200).send()
+            else
+                reply.status(404).send()
+        }
+    )
+}
+
 
 const createProjectRequestBodySchema = {
     type: 'object',
@@ -32,29 +109,18 @@ export type CreateProjectResponseBody = FromSchema<typeof createProjectResponseB
  * @param reply 
  */
 async function createProject(
-    request: FastifyRequest<{ Body: CreateProjectRequestBody }>,
-    reply: FastifyReply<{ Reply: CreateProjectResponseBody }>
-): Promise<void> {
-    const openaiClient = request.server.openaiClient
-    const projectInfo = request.body
-    const mongo = request.server.mongo
+    projectInfo: CreateProjectRequestBody,
+    projectsRepo: ProjectsRepository,
+    openAIService: OpenAIService
+): Promise<CreateProjectResponseBody> {
+    const projectVectorStoreId = await openAIService.createVectorStore(projectInfo.name);
 
-    const projectVectorStore = await openaiClient.vectorStores.create({
-        name: projectInfo.name
-    });
-
-    const projects = mongo.db.collection<Project>(PROJECTS_COLLECTION)
-
-    const project = {
+    const result = await projectsRepo.createProject({
         ...projectInfo,
-        vectorStore: projectVectorStore.id,
-        lastOpenAIResponseId: null,
-        sections: []
-    }
+        vectorStoreId: projectVectorStoreId
+    })
 
-    const result = await projects.insertOne(project)
-
-    reply.status(201).send({ id: result.insertedId.toString() })
+    return result
 }
 
 
@@ -73,28 +139,13 @@ export type ListProjectsResponseBody = FromSchema<typeof listProjectsResponseBod
 
 /**
  * List all the projects
- * @param request 
- * @param reply 
+ * @param projectsRepo
+ * @returns the list of projects
  */
 async function listProjects(
-    request: FastifyRequest,
-    reply: FastifyReply<{ Reply: ListProjectsResponseBody }>
-): Promise<void> {
-    const mongo = request.server.mongo
-
-    const projects = mongo.db.collection<Project>(PROJECTS_COLLECTION)
-
-    const allProjectsCursor = projects.find({}, buildProjectionOption<Project>('_id', 'name'))
-
-    const result: { id: string, name: string }[] = []
-    for await (const project of allProjectsCursor) {
-        result.push({
-            id: project._id.toString(),
-            name: project.name
-        })
-    }
-
-    reply.status(200).send(result)
+    projectsRepo: ProjectsRepository
+): Promise<ListProjectsResponseBody> {
+    return await projectsRepo.listProjects()
 }
 
 
@@ -125,22 +176,18 @@ export type GetProjectResponseBody = FromSchema<typeof getProjectResponseBodySch
 
 /**
  * Get the project info
- * @param request 
- * @param reply 
+ * @param projectId
+ * @param projectsRepo
+ * @returns the project info
  */
 async function getProject(
-    request: FastifyRequest<{ Params: GetProjectRequestParams }>,
-    reply: FastifyReply<{ Reply: GetProjectResponseBody }>
-): Promise<void> {
-    const projectId = request.params.projectId
-    const mongo = request.server.mongo
+    projectId: string,
+    projectsRepo: ProjectsRepository,
+): Promise<GetProjectResponseBody | null> {
+    const project = await projectsRepo.getProject(projectId, ['name', 'context', 'sections'])
 
-    const projects = mongo.db.collection<Project>(PROJECTS_COLLECTION)
-
-    const project = await projects.findOne(
-        { _id: new mongo.ObjectId(projectId) },
-        buildProjectionOption<Project>('name', 'context', 'sections')
-    )
+    if (project === null)
+        return null
 
     const result = {
         name: project.name,
@@ -148,7 +195,7 @@ async function getProject(
         sections: project.sections
     }
 
-    reply.status(200).send(result)
+    return result
 }
 
 
@@ -163,74 +210,23 @@ export type DeleteProjectRequestParams = FromSchema<typeof deleteProjectRequestP
 
 /**
  * Create a new project with no section. a dedicated vector store is automatically created
- * @param request 
- * @param reply 
+ * @param projectId
+ * @param projectsRepo
+ * @param openAIService
+ * @returns true if the project existed, false otherwise
  */
 async function deleteProject(
-    request: FastifyRequest<{ Params: DeleteProjectRequestParams }>,
-    reply: FastifyReply
-): Promise<void> {
-    const openaiClient = request.server.openaiClient
-    const projectId = request.params.projectId
-    const mongo = request.server.mongo
-    const projectFilter = { _id: new mongo.ObjectId(projectId) }
+    projectId: string,
+    projectsRepo: ProjectsRepository,
+    openAIService: OpenAIService
+): Promise<boolean> {
+    const project = await projectsRepo.getProject(projectId, ['vectorStoreId'])
+    if (project === null)
+        return false
 
-    const projects = mongo.db.collection<Project>(PROJECTS_COLLECTION);
-    const vectorStore = (await projects.findOne(projectFilter, buildProjectionOption<Project>('vectorStore'))).vectorStore
+    await projectsRepo.deleteProject(projectId)
 
-    await projects.deleteOne(projectFilter)
+    await openAIService.deleteVectorStore(project.vectorStoreId)
 
-    await openaiClient.vectorStores.del(vectorStore)
-
-    reply.status(200).send()
-}
-
-export default async function routes(fastify: FastifyInstance, _options: FastifyServerOptions) {
-    fastify.post<{ Body: CreateProjectRequestBody, Reply: CreateProjectResponseBody }>(
-        '/projects',
-        {
-            schema: {
-                body: createProjectRequestBodySchema,
-                response: {
-                    201: createProjectResponseBodySchema,
-                },
-            }
-        },
-        createProject
-    )
-
-    fastify.get<{ Reply: ListProjectsResponseBody }>(
-        '/projects',
-        {
-            schema: {
-                response: {
-                    200: listProjectsResponseBodySchema,
-                }
-            }
-        },
-        listProjects
-    )
-
-    fastify.get<{ Params: GetProjectRequestParams, Reply: GetProjectResponseBody }>(
-        '/projects/:projectId',
-        {
-            schema: {
-                params: getProjectRequestParamsSchema,
-                response: {
-                    200: getProjectResponseBodySchema,
-                },
-            }
-        },
-        getProject
-    )
-
-    fastify.delete<{ Params: DeleteProjectRequestParams }>(
-        '/projects/:projectId',
-        {
-            schema: {
-                params: deleteProjectRequestParamsSchema
-            }
-        },
-        deleteProject
-    )
+    return true
 }

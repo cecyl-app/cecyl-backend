@@ -14,7 +14,7 @@ export default async function build(opts = {}) {
     app.register(fastifyPlugin(openAISharedVectorStoreDecorator, { dependencies: ['openAIConnection'] }))
     app.register(fastifyMongodb, {
         forceClose: true,
-        url: process.env['DB_CONN_STRING']
+        url: process.env.DB_CONN_STRING
     })
     app.register(fastifyMultipart)
     app.register(filesRoutes)
@@ -23,7 +23,7 @@ export default async function build(opts = {}) {
     return app;
 }
 
-async function openAIConnectionDecorator(fastify: FastifyInstance, _opts: FastifyServerOptions) {
+function openAIConnectionDecorator(fastify: FastifyInstance, _opts: FastifyServerOptions) {
     fastify.decorate('openaiClient', new OpenAI())
 }
 
@@ -35,11 +35,9 @@ async function openAISharedVectorStoreDecorator(fastify: FastifyInstance, _opts:
     let sharedVectorStore = vectorStores.data.find(vs => vs.name === SHARED_VECTOR_STORE_NAME);
 
     // Create new vector store if shared one does not exist
-    if (sharedVectorStore === undefined) {
-        sharedVectorStore = await fastify.openaiClient.vectorStores.create({
-            name: SHARED_VECTOR_STORE_NAME
-        });
-    }
+    sharedVectorStore ??= await fastify.openaiClient.vectorStores.create({
+        name: SHARED_VECTOR_STORE_NAME
+    });
 
     fastify.decorate('sharedVectorStoreId', sharedVectorStore.id)
 }

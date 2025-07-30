@@ -1,7 +1,9 @@
+import { VectorStoreId } from "./openAI.js";
+
 export interface Project {
     name: string;
     context: string;
-    vectorStore: string;
-    lastOpenAIResponseId: string;
-    sections: any[];
+    vectorStoreId: VectorStoreId;
+    lastOpenAIResponseId?: string;
+    sections: string[];
 }

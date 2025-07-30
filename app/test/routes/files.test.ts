@@ -5,7 +5,6 @@ import { FastifyInstance } from 'fastify';
 
 import build from '../../src/build-server.js'
 import { ListFilesResponseBody, UploadFilesResponseBody } from '../../src/routes/files.js'
-import * as extendedFastify from '../../src/types/index.js'
 import { RequestExecutor } from '../test-utils/RequestExecutor.js';
 import { CreateProjectResponseBody } from '../../src/routes/projects.js';
 
