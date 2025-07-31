@@ -13,7 +13,7 @@ type ProjectFields = Parameters<typeof buildProjectionOption<Project>>[0]
 type ProjectInfo = Pick<Project, 'name' | 'context' | 'vectorStoreId'>
 
 export class ProjectsRepository {
-    projects: mongodb.Collection<Project>
+    protected projects: mongodb.Collection<Project>
 
     constructor(mongoClient: MongoClient) {
         const client = mongoClient
@@ -57,7 +57,9 @@ export class ProjectsRepository {
         return project
     }
 
-    async deleteProject(id: string): Promise<void> {
-        await this.projects.deleteOne({ _id: new ObjectId(id) })
+    async deleteProject(id: string): Promise<boolean> {
+        const result = await this.projects.deleteOne({ _id: new ObjectId(id) })
+
+        return result.deletedCount === 1
     }
 }

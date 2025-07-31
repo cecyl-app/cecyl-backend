@@ -2,7 +2,8 @@ import { setTimeout } from 'timers/promises';
 
 import OpenAI, { Uploadable } from "openai";
 
-import { OpenAIFileId, VectorStoreId } from "../types/openAI.js";
+import { OpenAIFileId, OpenAIUserPrompt, VectorStoreId } from "../types/openAI.js";
+
 
 export class OpenAIService {
     client: OpenAI
@@ -77,6 +78,33 @@ export class OpenAIService {
 
     async deleteFile(fileId: OpenAIFileId): Promise<void> {
         await this.client.files.delete(fileId);
+    }
+
+
+    async sendMessage(message: OpenAIUserPrompt): Promise<OpenAI.Responses.Response> {
+        const tools = message.tools?.map(t => ({
+            type: t.type,
+            vector_store_ids: t.vectorStoreIds
+        }))
+
+        const input: OpenAI.Responses.ResponseInput = [{
+            role: 'user',
+            content: message.userText
+        }]
+        if (message.developerText !== undefined)
+            input.unshift({
+                role: 'developer',
+                content: message.developerText
+            })
+
+        const response = await this.client.responses.create({
+            model: message.model,
+            previous_response_id: message.previousResponseId ?? null,
+            tools: tools,
+            input: input
+        });
+
+        return response
     }
 
 

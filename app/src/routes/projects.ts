@@ -3,10 +3,13 @@ import { FromSchema } from "json-schema-to-ts";
 
 import { ProjectsRepository } from "../repositories/ProjectsRepository.js";
 import { OpenAIService } from "../third-party/OpenAIService.js";
+import { ConversationsRepository } from "../repositories/ConversationsRepository.js";
+import constants from "../constants.js";
 
 
 export default function routes(fastify: FastifyInstance, _options: FastifyServerOptions) {
     const projectRepo = new ProjectsRepository(fastify.mongo.client)
+    const conversationsRepo = new ConversationsRepository(fastify.mongo.client)
     const openAIService = new OpenAIService(fastify.openaiClient)
 
     fastify.post<{ Body: CreateProjectRequestBody, Reply: CreateProjectResponseBody }>(
@@ -21,7 +24,7 @@ export default function routes(fastify: FastifyInstance, _options: FastifyServer
         },
         async (request, reply) => {
             const projectInfo = request.body
-            const result = await createProject(projectInfo, projectRepo, openAIService)
+            const result = await createProject(projectInfo, projectRepo, conversationsRepo, openAIService)
 
             reply.status(201).send(result)
         }
@@ -73,7 +76,7 @@ export default function routes(fastify: FastifyInstance, _options: FastifyServer
         },
         async (request, reply) => {
             const projectId = request.params.projectId
-            const result = await deleteProject(projectId, projectRepo, openAIService)
+            const result = await deleteProject(projectId, projectRepo, conversationsRepo, openAIService)
 
             if (result)
                 reply.status(200).send()
@@ -90,7 +93,7 @@ const createProjectRequestBodySchema = {
         name: { type: 'string' },
         context: { type: 'string' }
     },
-    required: ['name', 'context'],
+    required: ['name', 'context']
 } as const;
 export type CreateProjectRequestBody = FromSchema<typeof createProjectRequestBodySchema>;
 
@@ -111,6 +114,7 @@ export type CreateProjectResponseBody = FromSchema<typeof createProjectResponseB
 async function createProject(
     projectInfo: CreateProjectRequestBody,
     projectsRepo: ProjectsRepository,
+    conversationsRepo: ConversationsRepository,
     openAIService: OpenAIService
 ): Promise<CreateProjectResponseBody> {
     const projectVectorStoreId = await openAIService.createVectorStore(projectInfo.name);
@@ -118,6 +122,14 @@ async function createProject(
     const result = await projectsRepo.createProject({
         ...projectInfo,
         vectorStoreId: projectVectorStoreId
+    })
+
+    await conversationsRepo.createConversation(result.id)
+    await openAIService.sendMessage({
+        model: process.env.OPENAI_MODEL ?? 'gpt-4o-mini',
+        userText: constants.ai.messages.projectContext,
+        developerText: constants.ai.messages.projectDeveloperText,
+        previousResponseId: undefined
     })
 
     return result
@@ -218,15 +230,18 @@ export type DeleteProjectRequestParams = FromSchema<typeof deleteProjectRequestP
 async function deleteProject(
     projectId: string,
     projectsRepo: ProjectsRepository,
+    conversationsRepo: ConversationsRepository,
     openAIService: OpenAIService
 ): Promise<boolean> {
     const project = await projectsRepo.getProject(projectId, ['vectorStoreId'])
     if (project === null)
         return false
 
-    await projectsRepo.deleteProject(projectId)
+    const isProjectDeleted = await projectsRepo.deleteProject(projectId)
+
+    const isConversationDeleted = await conversationsRepo.deleteConversation(projectId)
 
     await openAIService.deleteVectorStore(project.vectorStoreId)
 
-    return true
+    return isConversationDeleted && isProjectDeleted
 }
