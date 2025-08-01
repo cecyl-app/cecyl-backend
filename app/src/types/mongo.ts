@@ -1,11 +1,12 @@
 import { ObjectId } from "@fastify/mongodb";
-import { VectorStoreId } from "./openAI.js";
+import { OpenAIResponseId, VectorStoreId } from "./openAI.js";
+import OpenAI from "openai";
 
 export interface Project {
     name: string;
     context: string;
     vectorStoreId: VectorStoreId;
-    lastOpenAIResponseId?: string;
+    lastOpenAIResponseId?: OpenAIResponseId;
     sections: string[];
 }
 
@@ -14,14 +15,12 @@ export interface UserPrompt {
     developerText?: string;
 }
 
-export type AIResponseStatus = 'completed' | 'failed' | 'cancelled' | 'incomplete'
-
 export interface AIResponse {
     id: string;
     createdAt: number;
-    status: AIResponseStatus;
-    error?: { code: string, message: string }
-    incompleteDetails?: { reason: string }
+    status: OpenAI.Responses.ResponseStatus;
+    error?: OpenAI.Responses.ResponseError;
+    incompleteDetails?: OpenAI.Responses.Response.IncompleteDetails;
     model: string;
     outputText: string;
 }

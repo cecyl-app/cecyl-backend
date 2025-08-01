@@ -3,6 +3,7 @@ import { ObjectId, mongodb } from '@fastify/mongodb'
 import { Project } from "../types/mongo.js";
 import constants from "../constants.js";
 import { buildProjectionOption } from '../utils/mongo-utils.js';
+import { OpenAIResponseId } from '../types/openAI.js';
 
 const PROJECTS_COLLECTION = constants.db.collections.PROJECTS
 
@@ -12,13 +13,16 @@ type ProjectFields = Parameters<typeof buildProjectionOption<Project>>[0]
 
 type ProjectInfo = Pick<Project, 'name' | 'context' | 'vectorStoreId'>
 
+
 export class ProjectsRepository {
     protected projects: mongodb.Collection<Project>
+
 
     constructor(mongoClient: MongoClient) {
         const client = mongoClient
         this.projects = client.db().collection<Project>(PROJECTS_COLLECTION)
     }
+
 
     async createProject(projectInfo: ProjectInfo): Promise<{ id: string }> {
         const project = {
@@ -30,6 +34,7 @@ export class ProjectsRepository {
 
         return { id: result.insertedId.toString() }
     }
+
 
     async listProjects(): Promise<{ id: string, name: string }[]> {
         const allProjectsCursor = this.projects.find(
@@ -48,6 +53,7 @@ export class ProjectsRepository {
         return result
     }
 
+
     async getProject(id: string, projectionFields: ProjectFields[]): Promise<Project | null> {
         const project = await this.projects.findOne(
             { _id: new ObjectId(id) },
@@ -56,6 +62,21 @@ export class ProjectsRepository {
 
         return project
     }
+
+
+    async updateLastOpenAIResponseId(id: string, lastOpenAIResponseId: OpenAIResponseId): Promise<boolean> {
+        const result = await this.projects.updateOne(
+            { _id: new ObjectId(id) },
+            {
+                '$set': {
+                    lastOpenAIResponseId: lastOpenAIResponseId
+                }
+            }
+        )
+
+        return result.matchedCount === 1 && result.modifiedCount === 1
+    }
+
 
     async deleteProject(id: string): Promise<boolean> {
         const result = await this.projects.deleteOne({ _id: new ObjectId(id) })

@@ -10,7 +10,7 @@ import constants from "../constants.js";
 export default function routes(fastify: FastifyInstance, _options: FastifyServerOptions) {
     const projectRepo = new ProjectsRepository(fastify.mongo.client)
     const conversationsRepo = new ConversationsRepository(fastify.mongo.client)
-    const openAIService = new OpenAIService(fastify.openaiClient)
+    const openAIService = new OpenAIService(fastify.openaiClient, projectRepo, conversationsRepo)
 
     fastify.post<{ Body: CreateProjectRequestBody, Reply: CreateProjectResponseBody }>(
         '/projects',
