@@ -1,4 +1,4 @@
-const PROJECT_CONTEXT_PROMPT = `
+const PROJECT_CONTEXT_PREFIX_PROMPT = `
 # Instructions
 
 - Always respond in the same language used in the "Context" section below.
@@ -11,8 +11,10 @@ and configure your behavior.
 const PROJECT_DEVELOPER_TEXT = `
 you are a consultant for R&D and GMP facilities and pharmaceutical companies, 
 focused on ATMP development and production (Cell and Gene therapy) for clinical trial phases.
+Always respond in Markdown.
 `
 
+const SHARED_VECTOR_STORE_NAME = 'Shared files'
 
 export default {
     db: {
@@ -22,9 +24,12 @@ export default {
         }
     },
     ai: {
+        names: {
+            sharedVectorStore: SHARED_VECTOR_STORE_NAME
+        },
         messages: {
             projectDeveloperText: PROJECT_DEVELOPER_TEXT,
-            projectContext: PROJECT_CONTEXT_PROMPT
+            projectContextPrefix: PROJECT_CONTEXT_PREFIX_PROMPT
         }
     }
 }

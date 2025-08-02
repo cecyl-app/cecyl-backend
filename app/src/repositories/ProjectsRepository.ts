@@ -4,6 +4,7 @@ import { Project } from "../types/mongo.js";
 import constants from "../constants.js";
 import { buildProjectionOption } from '../utils/mongo-utils.js';
 import { OpenAIResponseId } from '../types/openAI.js';
+import { ProjectNotFound } from '../exceptions/project-errors.js';
 
 const PROJECTS_COLLECTION = constants.db.collections.PROJECTS
 
@@ -64,7 +65,7 @@ export class ProjectsRepository {
     }
 
 
-    async updateLastOpenAIResponseId(id: string, lastOpenAIResponseId: OpenAIResponseId): Promise<boolean> {
+    async updateLastOpenAIResponseId(id: string, lastOpenAIResponseId: OpenAIResponseId): Promise<void> {
         const result = await this.projects.updateOne(
             { _id: new ObjectId(id) },
             {
@@ -74,13 +75,15 @@ export class ProjectsRepository {
             }
         )
 
-        return result.matchedCount === 1 && result.modifiedCount === 1
+        if (result.matchedCount === 0)
+            throw new ProjectNotFound(id)
     }
 
 
-    async deleteProject(id: string): Promise<boolean> {
+    async deleteProject(id: string): Promise<void> {
         const result = await this.projects.deleteOne({ _id: new ObjectId(id) })
 
-        return result.deletedCount === 1
+        if (result.deletedCount === 1)
+            throw new ProjectNotFound(id)
     }
 }

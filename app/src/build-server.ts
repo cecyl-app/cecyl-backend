@@ -6,38 +6,46 @@ import fastifyMongodb from "@fastify/mongodb";
 
 import filesRoutes from './routes/files.js'
 import projectsRoutes from './routes/projects.js'
+import { OpenAIService } from "./third-party/OpenAIService.js";
+import { ProjectsRepository } from "./repositories/ProjectsRepository.js";
+import { ConversationsRepository } from "./repositories/ConversationsRepository.js";
 
 export default async function build(opts = {}) {
     const app = fastify(opts);
 
-    app.register(fastifyPlugin(openAIConnectionDecorator, { name: 'openAIConnection' }))
-    app.register(fastifyPlugin(openAISharedVectorStoreDecorator, { dependencies: ['openAIConnection'] }))
+    app.register(fastifyMultipart)
     app.register(fastifyMongodb, {
         forceClose: true,
         url: process.env.DB_CONN_STRING
     })
-    app.register(fastifyMultipart)
+
+    app.register(fastifyPlugin(projectsRepositoryDecorator,
+        { name: 'projectsRepository', dependencies: ['@fastify/mongodb'] }))
+    app.register(fastifyPlugin(conversationsRepositoryDecorator,
+        { name: 'conversationsRepository', dependencies: ['@fastify/mongodb'] }))
+    app.register(fastifyPlugin(openAIServiceDecorator,
+        { name: 'openAIService', dependencies: ['projectsRepository', 'conversationsRepository'] }))
+
     app.register(filesRoutes)
     app.register(projectsRoutes)
 
     return app;
 }
 
-function openAIConnectionDecorator(fastify: FastifyInstance, _opts: FastifyServerOptions) {
-    fastify.decorate('openaiClient', new OpenAI())
+
+function projectsRepositoryDecorator(fastify: FastifyInstance, _opts: FastifyServerOptions) {
+    fastify.decorate('projectsRepo', new ProjectsRepository(fastify.mongo.client))
 }
 
-async function openAISharedVectorStoreDecorator(fastify: FastifyInstance, _opts: FastifyServerOptions) {
-    const SHARED_VECTOR_STORE_NAME = "Shared files";
-    // get only the first 10 vector stores created, the shared one is assumed to be among them
-    const vectorStores = await fastify.openaiClient.vectorStores.list({ limit: 10, order: "asc" });
 
-    let sharedVectorStore = vectorStores.data.find(vs => vs.name === SHARED_VECTOR_STORE_NAME);
+function conversationsRepositoryDecorator(fastify: FastifyInstance, _opts: FastifyServerOptions) {
+    fastify.decorate('conversationsRepo', new ConversationsRepository(fastify.mongo.client))
+}
 
-    // Create new vector store if shared one does not exist
-    sharedVectorStore ??= await fastify.openaiClient.vectorStores.create({
-        name: SHARED_VECTOR_STORE_NAME
-    });
 
-    fastify.decorate('sharedVectorStoreId', sharedVectorStore.id)
+async function openAIServiceDecorator(fastify: FastifyInstance, _opts: FastifyServerOptions) {
+    const openAIService = await OpenAIService.create(
+        new OpenAI(), fastify.projectsRepo, fastify.conversationsRepo
+    )
+    fastify.decorate('openAIService', openAIService)
 }

@@ -5,12 +5,14 @@ import { ProjectsRepository } from "../repositories/ProjectsRepository.js";
 import { OpenAIService } from "../third-party/OpenAIService.js";
 import { ConversationsRepository } from "../repositories/ConversationsRepository.js";
 import constants from "../constants.js";
+import { ProjectNotFound } from "../exceptions/project-errors.js";
+import { ConversationNotFoundError } from "../exceptions/conversation-errors.js";
 
 
 export default function routes(fastify: FastifyInstance, _options: FastifyServerOptions) {
-    const projectRepo = new ProjectsRepository(fastify.mongo.client)
-    const conversationsRepo = new ConversationsRepository(fastify.mongo.client)
-    const openAIService = new OpenAIService(fastify.openaiClient, projectRepo, conversationsRepo)
+    const projectRepo = fastify.projectsRepo
+    const conversationsRepo = fastify.conversationsRepo
+    const openAIService = fastify.openAIService
 
     fastify.post<{ Body: CreateProjectRequestBody, Reply: CreateProjectResponseBody }>(
         '/projects',
@@ -76,14 +78,18 @@ export default function routes(fastify: FastifyInstance, _options: FastifyServer
         },
         async (request, reply) => {
             const projectId = request.params.projectId
-            const result = await deleteProject(projectId, projectRepo, conversationsRepo, openAIService)
+            await deleteProject(projectId, projectRepo, openAIService)
 
-            if (result)
-                reply.status(200).send()
-            else
-                reply.status(404).send()
+            reply.status(200).send()
         }
     )
+
+    fastify.setErrorHandler(function (error, request, reply) {
+        fastify.log.error(error)
+
+        if ([ProjectNotFound, ConversationNotFoundError].some(etype => error instanceof etype))
+            reply.status(404).send({ message: error.message })
+    })
 }
 
 
@@ -124,12 +130,11 @@ async function createProject(
         vectorStoreId: projectVectorStoreId
     })
 
-    await conversationsRepo.createConversation(result.id)
-    await openAIService.sendMessage({
+    await conversationsRepo.createConversation(result.id, projectInfo.name)
+    await openAIService.sendMessage(result.id, {
         model: process.env.OPENAI_MODEL ?? 'gpt-4o-mini',
-        userText: constants.ai.messages.projectContext,
-        developerText: constants.ai.messages.projectDeveloperText,
-        previousResponseId: undefined
+        userText: constants.ai.messages.projectContextPrefix,
+        developerText: constants.ai.messages.projectDeveloperText
     })
 
     return result
@@ -230,18 +235,13 @@ export type DeleteProjectRequestParams = FromSchema<typeof deleteProjectRequestP
 async function deleteProject(
     projectId: string,
     projectsRepo: ProjectsRepository,
-    conversationsRepo: ConversationsRepository,
     openAIService: OpenAIService
-): Promise<boolean> {
+): Promise<void> {
     const project = await projectsRepo.getProject(projectId, ['vectorStoreId'])
     if (project === null)
-        return false
+        throw new ProjectNotFound(projectId)
 
-    const isProjectDeleted = await projectsRepo.deleteProject(projectId)
-
-    const isConversationDeleted = await conversationsRepo.deleteConversation(projectId)
+    await projectsRepo.deleteProject(projectId)
 
     await openAIService.deleteVectorStore(project.vectorStoreId)
-
-    return isConversationDeleted && isProjectDeleted
 }

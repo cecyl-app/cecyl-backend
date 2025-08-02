@@ -5,23 +5,38 @@ import OpenAI, { Uploadable } from "openai";
 import { OpenAIFileId, OpenAIPromptForProject, VectorStoreId } from "../types/openAI.js";
 import { ProjectsRepository } from '../repositories/ProjectsRepository.js';
 import { ConversationsRepository } from '../repositories/ConversationsRepository.js';
-import { ProjectNotFound } from '../exceptions/project-exceptions.js';
+import { ProjectNotFound } from '../exceptions/project-errors.js';
 import { AIResponse } from '../types/mongo.js';
+import constants from '../constants.js';
 
 
 export class OpenAIService {
     protected client: OpenAI
     protected projectsRepo: ProjectsRepository
     protected conversationsRepo: ConversationsRepository
+    protected _sharedVectorStoreId: VectorStoreId
 
-    constructor(
-        openAIClient: OpenAI,
+
+    private constructor() { }
+
+
+    static async create(openAIClient: OpenAI,
         projectsRepo: ProjectsRepository,
         conversationsRepo: ConversationsRepository
-    ) {
-        this.client = openAIClient
-        this.projectsRepo = projectsRepo
-        this.conversationsRepo = conversationsRepo
+    ): Promise<OpenAIService> {
+        const service = new OpenAIService()
+        service.client = openAIClient
+        service.projectsRepo = projectsRepo
+        service.conversationsRepo = conversationsRepo
+
+        service._sharedVectorStoreId = await service.createSharedVectorStoreIfNotExists()
+
+        return service
+    }
+
+
+    get sharedVectorStoreId(): VectorStoreId {
+        return this._sharedVectorStoreId
     }
 
 
@@ -100,14 +115,12 @@ export class OpenAIService {
      * stored in the project info. Moreover it appends the message exchange (input and output messages)
      * in the conversation history
      * @param projectId 
-     * @param prompt 
-     * @param sharedVectorStoredId the shared vector id, joined with the project-scoped vector id
+     * @param prompt
      * @returns the OpenAI response
      */
     async sendMessage(
         projectId: string,
-        prompt: OpenAIPromptForProject,
-        sharedVectorStoredId: VectorStoreId
+        prompt: OpenAIPromptForProject
     ): Promise<AIResponse> {
         const project = await this.projectsRepo.getProject(
             projectId, ['vectorStoreId', 'lastOpenAIResponseId']
@@ -119,7 +132,7 @@ export class OpenAIService {
         // ******* tools
         const tools: OpenAI.Responses.Tool[] = [{
             type: 'file_search',
-            vector_store_ids: [project.vectorStoreId, sharedVectorStoredId]
+            vector_store_ids: [project.vectorStoreId, this._sharedVectorStoreId]
         }]
 
         // ******* input
@@ -155,7 +168,7 @@ export class OpenAIService {
             error: response.error ?? undefined,
             incompleteDetails: response.incomplete_details ?? undefined
         }
-        await this.conversationsRepo.addMessageExchange(projectId, {
+        await this.conversationsRepo.addMessageExchangeToProject(projectId, {
             userPrompt: {
                 userText: prompt.userText,
                 developerText: prompt.developerText
@@ -193,5 +206,24 @@ export class OpenAIService {
 
             firstTimePoll = false;
         } while (vectorStoreFileStatus !== 'completed');
+    }
+
+    /**
+     * Create the vector store containing files necessary for all projects. The store is 
+     * created only if it does not exist yet
+     * @returns the vector store id
+     */
+    protected async createSharedVectorStoreIfNotExists(): Promise<VectorStoreId> {
+        // get only the first 10 vector stores created, the shared one is assumed to be among them
+        const vectorStores = await this.client.vectorStores.list({ limit: 10, order: "asc" });
+
+        let sharedVectorStore = vectorStores.data.find(vs => vs.name === constants.ai.names.sharedVectorStore);
+
+        // Create new vector store if shared one does not exist
+        sharedVectorStore ??= await this.client.vectorStores.create({
+            name: constants.ai.names.sharedVectorStore
+        });
+
+        return sharedVectorStore.id
     }
 }

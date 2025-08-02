@@ -10,8 +10,8 @@ import { VectorStoreId } from '../types/openAI.js';
 
 
 export default function routes(fastify: FastifyInstance, _options: FastifyServerOptions) {
-    const projectsRepo = new ProjectsRepository(fastify.mongo.client)
-    const openAIService = new OpenAIService(fastify.openaiClient)
+    const projectsRepo = fastify.projectsRepo
+    const openAIService = fastify.openAIService
 
     // *********************************************
     // APIs for search files in the shared vector store
@@ -29,7 +29,7 @@ export default function routes(fastify: FastifyInstance, _options: FastifyServer
         async (request, reply) => {
             const files = await request.saveRequestFiles()
 
-            const result = await uploadFiles(files, fastify.sharedVectorStoreId, openAIService)
+            const result = await uploadFiles(files, openAIService.sharedVectorStoreId, openAIService)
 
             reply.status(201).send(result)
         })
@@ -45,7 +45,7 @@ export default function routes(fastify: FastifyInstance, _options: FastifyServer
             }
         },
         async (request, reply) => {
-            const result = await listFiles(fastify.sharedVectorStoreId, openAIService)
+            const result = await listFiles(openAIService.sharedVectorStoreId, openAIService)
 
             reply.status(200).send(result)
         })
@@ -61,7 +61,7 @@ export default function routes(fastify: FastifyInstance, _options: FastifyServer
         async (request, reply) => {
             const fileId = request.params.fileId
 
-            await deleteFile(fastify.sharedVectorStoreId, fileId, openAIService);
+            await deleteFile(openAIService.sharedVectorStoreId, fileId, openAIService);
 
             reply.status(200).send()
         })

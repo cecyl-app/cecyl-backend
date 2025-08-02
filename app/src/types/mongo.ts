@@ -31,6 +31,7 @@ export interface MessageExchange {
 }
 
 export interface Conversation {
-    projectId: ObjectId,
+    projectId: ObjectId;
+    projectName: string;
     messages: MessageExchange[]
 }
