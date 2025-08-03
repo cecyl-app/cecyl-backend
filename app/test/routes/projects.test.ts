@@ -24,8 +24,8 @@ afterAll(async () => {
 
 describe('projects', () => {
     test('CRUD workflow', async () => {
-        const TEST_PROJECT_NAME = 'test-project'
-        const TEST_PROJECT_CONTEXT = 'test-context'
+        const TEST_PROJECT_NAME = 'my test project'
+        const TEST_PROJECT_CONTEXT = 'my project context'
 
         // create project
         const createProjectResponse = await RequestExecutor.createProject(app,

@@ -7,6 +7,8 @@ import { SavedMultipartFile } from '@fastify/multipart';
 import { OpenAIService } from '../third-party/OpenAIService.js';
 import { ProjectsRepository } from '../repositories/ProjectsRepository.js';
 import { VectorStoreId } from '../types/openAI.js';
+import { ProjectNotFound } from '../exceptions/project-errors.js';
+import { ConversationNotFoundError } from '../exceptions/conversation-errors.js';
 
 
 export default function routes(fastify: FastifyInstance, _options: FastifyServerOptions) {
@@ -83,17 +85,11 @@ export default function routes(fastify: FastifyInstance, _options: FastifyServer
         },
         async (request, reply) => {
             const vectorStoreId = await getVectorStoreIdFromProjectId(request.params.projectId, projectsRepo)
+            const files = await request.saveRequestFiles()
 
-            if (vectorStoreId === null) {
-                reply.status(404).send()
-            }
-            else {
-                const files = await request.saveRequestFiles()
+            const result = await uploadFiles(files, vectorStoreId, openAIService)
 
-                const result = await uploadFiles(files, vectorStoreId, openAIService)
-
-                reply.status(201).send(result)
-            }
+            reply.status(201).send(result)
         })
 
 
@@ -110,14 +106,9 @@ export default function routes(fastify: FastifyInstance, _options: FastifyServer
         async (request, reply) => {
             const vectorStoreId = await getVectorStoreIdFromProjectId(request.params.projectId, projectsRepo)
 
-            if (vectorStoreId === null) {
-                reply.status(404).send()
-            }
-            else {
-                const result = await listFiles(vectorStoreId, openAIService)
+            const result = await listFiles(vectorStoreId, openAIService)
 
-                reply.status(200).send(result)
-            }
+            reply.status(200).send(result)
         })
 
 
@@ -132,15 +123,18 @@ export default function routes(fastify: FastifyInstance, _options: FastifyServer
             const fileId = request.params.fileId
             const vectorStoreId = await getVectorStoreIdFromProjectId(request.params.projectId, projectsRepo)
 
-            if (vectorStoreId === null) {
-                reply.status(404).send()
-            }
-            else {
-                await deleteFile(vectorStoreId, fileId, openAIService);
+            await deleteFile(vectorStoreId, fileId, openAIService);
 
-                reply.status(200).send()
-            }
+            reply.status(200).send()
         })
+
+
+    fastify.setErrorHandler(function (error, request, reply) {
+        fastify.log.error(error)
+
+        if ([ProjectNotFound, ConversationNotFoundError].some(etype => error instanceof etype))
+            reply.status(404).send({ message: error.message })
+    })
 }
 
 
@@ -281,8 +275,11 @@ async function deleteFile(
 async function getVectorStoreIdFromProjectId(
     projectId: string,
     projectsRepo: ProjectsRepository
-): Promise<VectorStoreId | null> {
+): Promise<VectorStoreId> {
     const project = await projectsRepo.getProject(projectId, ['vectorStoreId'])
 
-    return project?.vectorStoreId ?? null
+    if (project === null)
+        throw new ProjectNotFound(projectId)
+
+    return project.vectorStoreId
 }

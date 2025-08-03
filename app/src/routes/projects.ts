@@ -133,7 +133,7 @@ async function createProject(
     await conversationsRepo.createConversation(result.id, projectInfo.name)
     await openAIService.sendMessage(result.id, {
         model: process.env.OPENAI_MODEL ?? 'gpt-4o-mini',
-        userText: constants.ai.messages.projectContextPrefix,
+        userText: constants.ai.messages.projectContextPrefix + projectInfo.context,
         developerText: constants.ai.messages.projectDeveloperText
     })
 

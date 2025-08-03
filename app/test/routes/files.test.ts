@@ -61,7 +61,7 @@ describe('search-files - project vector store', () => {
 
     beforeAll(async () => {
         const createProjectResponse = await RequestExecutor.createProject(app,
-            'project-name', 'project-context')
+            'my project', 'my project context')
 
         projectId = createProjectResponse.json<CreateProjectResponseBody>().id
         // console.log('projectId: ' + projectId)

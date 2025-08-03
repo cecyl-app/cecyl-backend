@@ -17,17 +17,21 @@ export class OpenAIService {
     protected _sharedVectorStoreId: VectorStoreId
 
 
-    private constructor() { }
+    private constructor(openAIClient: OpenAI,
+        projectsRepo: ProjectsRepository,
+        conversationsRepo: ConversationsRepository
+    ) {
+        this.client = openAIClient
+        this.projectsRepo = projectsRepo
+        this.conversationsRepo = conversationsRepo
+    }
 
 
     static async create(openAIClient: OpenAI,
         projectsRepo: ProjectsRepository,
         conversationsRepo: ConversationsRepository
     ): Promise<OpenAIService> {
-        const service = new OpenAIService()
-        service.client = openAIClient
-        service.projectsRepo = projectsRepo
-        service.conversationsRepo = conversationsRepo
+        const service = new OpenAIService(openAIClient, projectsRepo, conversationsRepo)
 
         service._sharedVectorStoreId = await service.createSharedVectorStoreIfNotExists()
 
@@ -161,7 +165,7 @@ export class OpenAIService {
             id: response.id,
             createdAt: response.created_at,
             model: response.model,
-            status: response.status || 'incomplete',
+            status: response.status ?? 'incomplete',
             outputText: response.output.filter(o => o.type === 'message')
                 .map(m => m.content).flat().map(o => o.type === 'output_text' ? o.text : o.refusal)
                 .join('\n'),

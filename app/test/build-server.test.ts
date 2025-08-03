@@ -22,10 +22,11 @@ afterAll(async () => {
 
 describe('build-server', () => {
     test('when fastify instance is created, then decorators are available', () => {
-        console.log(`sharedVectorStoreId: ${app.sharedVectorStoreId}`)
+        expect(app.openAIService).toBeDefined()
+        console.log(`sharedVectorStoreId: ${app.openAIService.sharedVectorStoreId}`)
+        expect(app.openAIService.sharedVectorStoreId.length).toBeGreaterThan(0)
 
-        expect(app.openaiClient).toBeDefined()
-        expect(app.sharedVectorStoreId).toBeDefined()
-        expect(app.sharedVectorStoreId.length).toBeGreaterThan(0)
+        expect(app.projectsRepo).toBeDefined()
+        expect(app.conversationsRepo).toBeDefined()
     });
 });

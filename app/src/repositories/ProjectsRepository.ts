@@ -83,7 +83,7 @@ export class ProjectsRepository {
     async deleteProject(id: string): Promise<void> {
         const result = await this.projects.deleteOne({ _id: new ObjectId(id) })
 
-        if (result.deletedCount === 1)
+        if (result.deletedCount === 0)
             throw new ProjectNotFound(id)
     }
 }
