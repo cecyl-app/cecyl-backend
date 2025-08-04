@@ -2,20 +2,26 @@ import { ObjectId } from "@fastify/mongodb";
 import { OpenAIResponseId, VectorStoreId } from "./openAI.js";
 import OpenAI from "openai";
 
-export interface Project {
+export type ProjectSection = {
+    id: ObjectId;
+    name: string;
+    content: string;
+}
+
+export type Project = {
     name: string;
     context: string;
     vectorStoreId: VectorStoreId;
     lastOpenAIResponseId?: OpenAIResponseId;
-    sections: string[];
+    sections: ProjectSection[];
 }
 
-export interface UserPrompt {
+export type UserPrompt = {
     userText: string;
     developerText?: string;
 }
 
-export interface AIResponse {
+export type AIResponse = {
     id: string;
     createdAt: number;
     status: OpenAI.Responses.ResponseStatus;
@@ -25,12 +31,12 @@ export interface AIResponse {
     outputText: string;
 }
 
-export interface MessageExchange {
+export type MessageExchange = {
     userPrompt: UserPrompt
     aiResponse: AIResponse
 }
 
-export interface Conversation {
+export type Conversation = {
     projectId: ObjectId;
     projectName: string;
     messages: MessageExchange[]

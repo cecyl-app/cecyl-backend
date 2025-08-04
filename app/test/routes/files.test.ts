@@ -7,6 +7,12 @@ import build from '../../src/build-server.js'
 import { ListFilesResponseBody, UploadFilesResponseBody } from '../../src/routes/files.js'
 import { RequestExecutor } from '../test-utils/RequestExecutor.js';
 import { CreateProjectResponseBody } from '../../src/routes/projects.js';
+import { ConversationsTestUtils } from '../test-utils/ConversationsTestUtils.js';
+
+/* eslint-disable-next-line @typescript-eslint/no-unused-vars --
+ * TODO: types.d.ts is not imported in test/ files and can only be manually imported
+ **/
+import * as extendedFastify from '../../src/types/index.js'
 
 let app: FastifyInstance
 
@@ -20,6 +26,8 @@ beforeAll(async () => {
 
 
 afterAll(async () => {
+    await ConversationsTestUtils.deleteAllConversations(app.conversationsRepo)
+
     await app.close()
 })
 

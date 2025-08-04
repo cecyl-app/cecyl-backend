@@ -86,4 +86,44 @@ export class ProjectsRepository {
         if (result.deletedCount === 0)
             throw new ProjectNotFound(id)
     }
+
+
+    // ********************* SECTIONS
+    async createSection(projectId: string, name: string): Promise<{ id: string }> {
+        const sectionId = new ObjectId()
+
+        const result = await this.projects.updateOne(
+            { _id: new ObjectId(projectId) },
+            {
+                "$push": {
+                    sections: {
+                        id: sectionId,
+                        name: name,
+                        content: ''
+                    }
+                }
+            }
+        )
+
+        if (result.matchedCount !== 1 || result.modifiedCount !== 1)
+            throw new ProjectNotFound(projectId)
+
+        return { id: sectionId.toString() }
+    }
+
+    async deleteSection(projectId: string, sectionId: string): Promise<void> {
+        const result = await this.projects.updateOne(
+            { _id: new ObjectId(projectId) },
+            {
+                "$pull": {
+                    sections: {
+                        id: new ObjectId(sectionId)
+                    }
+                }
+            }
+        )
+
+        if (result.matchedCount !== 1 || result.modifiedCount !== 1)
+            throw new ProjectNotFound(projectId)
+    }
 }

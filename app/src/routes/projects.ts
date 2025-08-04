@@ -10,7 +10,7 @@ import { ConversationNotFoundError } from "../exceptions/conversation-errors.js"
 
 
 export default function routes(fastify: FastifyInstance, _options: FastifyServerOptions) {
-    const projectRepo = fastify.projectsRepo
+    const projectsRepo = fastify.projectsRepo
     const conversationsRepo = fastify.conversationsRepo
     const openAIService = fastify.openAIService
 
@@ -26,7 +26,7 @@ export default function routes(fastify: FastifyInstance, _options: FastifyServer
         },
         async (request, reply) => {
             const projectInfo = request.body
-            const result = await createProject(projectInfo, projectRepo, conversationsRepo, openAIService)
+            const result = await createProject(projectInfo, projectsRepo, conversationsRepo, openAIService)
 
             reply.status(201).send(result)
         }
@@ -42,7 +42,7 @@ export default function routes(fastify: FastifyInstance, _options: FastifyServer
             }
         },
         async (request, reply) => {
-            const result = await listProjects(projectRepo)
+            const result = await listProjects(projectsRepo)
 
             reply.status(200).send(result)
         }
@@ -60,7 +60,7 @@ export default function routes(fastify: FastifyInstance, _options: FastifyServer
         },
         async (request, reply) => {
             const projectId = request.params.projectId
-            const result = await getProject(projectId, projectRepo)
+            const result = await getProject(projectId, projectsRepo)
 
             if (result === null)
                 reply.status(404).send()
@@ -78,7 +78,7 @@ export default function routes(fastify: FastifyInstance, _options: FastifyServer
         },
         async (request, reply) => {
             const projectId = request.params.projectId
-            await deleteProject(projectId, projectRepo, openAIService)
+            await deleteProject(projectId, projectsRepo, openAIService)
 
             reply.status(200).send()
         }
@@ -183,7 +183,13 @@ const getProjectResponseBodySchema = {
         sections: {
             type: 'array',
             items: {
-                type: 'string'
+                type: 'object',
+                properties: {
+                    id: { type: 'string' },
+                    name: { type: 'string' },
+                    content: { type: 'string' }
+                },
+                required: ['id', 'name', 'content']
             }
         }
     },
@@ -226,7 +232,7 @@ const deleteProjectRequestParamsSchema = {
 export type DeleteProjectRequestParams = FromSchema<typeof deleteProjectRequestParamsSchema>;
 
 /**
- * Create a new project with no section. a dedicated vector store is automatically created
+ * delete a project and its associated vector store
  * @param projectId
  * @param projectsRepo
  * @param openAIService
