@@ -36,6 +36,28 @@ export default function routes(fastify: FastifyInstance, _options: FastifyServer
         }
     )
 
+    fastify.post<{ Body: CreateSectionRequestBody, Params: CreateSectionRequestParams, Reply: CreateSectionResponseBody }>(
+        '/projects/:projectId/sections/:sectionId/prompt',
+        {
+            schema: {
+                body: createSectionRequestBodySchema,
+                params: createSectionRequestParamsSchema,
+                response: {
+                    201: createSectionResponseBodySchema
+                }
+            }
+        },
+        async (request, reply) => {
+            const sectionInfo = {
+                projectId: request.params.projectId,
+                name: request.body.name
+            }
+            const result = await createSection(sectionInfo, projectsRepo)
+
+            reply.status(201).send(result)
+        }
+    )
+
     fastify.delete<{ Params: DeleteSectionRequestParams }>(
         '/projects/:projectId/sections/:sectionId',
         {
@@ -103,6 +125,54 @@ async function createSection(
 }
 
 
+const sendSectionPromptRequestBodySchema = {
+    type: 'object',
+    properties: {
+        prompt: { type: 'string' }
+    },
+    required: ['prompt']
+} as const;
+export type SendSectionPromptRequestBody = FromSchema<typeof sendSectionPromptRequestBodySchema>;
+
+const sendSectionPromptRequestParamsSchema = {
+    type: 'object',
+    properties: {
+        projectId: { type: 'string' },
+        sectionId: { type: 'string' }
+    },
+    required: ['projectId', 'sectionId']
+} as const;
+export type SendSectionPromptRequestParams = FromSchema<typeof sendSectionPromptRequestParamsSchema>;
+
+const sendSectionPromptResponseBodySchema = {
+    type: 'object',
+    properties: {
+        output: { type: 'string' }
+    },
+    required: ['output'],
+} as const;
+export type SendSectionPromptResponseBody = FromSchema<typeof sendSectionPromptResponseBodySchema>;
+
+/**
+ * Send a request to the AI for a specific section
+ * @param request 
+ * @param reply 
+ */
+async function sendPrompt(
+    sectionInfo: SendSectionPromptRequestBody & SendSectionPromptRequestParams,
+    projectsRepo: ProjectsRepository,
+): Promise<SendSectionPromptResponseBody> {
+    await projectsRepo.addSectionMessage(
+        sectionInfo.projectId,
+        sectionInfo.sectionId,
+        {
+            content: sectionInfo.prompt,
+            type: 'request'
+        }
+    )
+}
+
+
 const deleteSectionRequestParamsSchema = {
     type: 'object',
     properties: {
@@ -126,23 +196,3 @@ async function deleteSection(
 ): Promise<void> {
     await projectsRepo.deleteSection(sectionInfo.projectId, sectionInfo.sectionId)
 }
-
-
-/**
- * PUT:
- * db.collection.update({
-  projectId: ""
-},
-{
-  "$push": {
-    "sections.$[elem].messages": ""
-  }
-},
-{
-  "arrayFilters": [ 
-    { 
-      "elem.id": { $eq: "" }
-    } 
-  ]
-})
- */

@@ -1,10 +1,10 @@
 import { ObjectId, mongodb } from '@fastify/mongodb'
 
-import { Project } from "../types/mongo.js";
+import { Project, SectionHistoryMessage } from "../types/mongo.js";
 import constants from "../constants.js";
 import { buildProjectionOption } from '../utils/mongo-utils.js';
 import { OpenAIResponseId } from '../types/openAI.js';
-import { ProjectNotFound } from '../exceptions/project-errors.js';
+import { ProjectNotFound, ProjectSectionNotFound } from '../exceptions/project-errors.js';
 
 const PROJECTS_COLLECTION = constants.db.collections.PROJECTS
 
@@ -88,7 +88,9 @@ export class ProjectsRepository {
     }
 
 
-    // ********************* SECTIONS
+    // ****************************************************
+    // ********************* SECTIONS *********************
+    // ****************************************************
     async createSection(projectId: string, name: string): Promise<{ id: string }> {
         const sectionId = new ObjectId()
 
@@ -99,7 +101,7 @@ export class ProjectsRepository {
                     sections: {
                         id: sectionId,
                         name: name,
-                        content: ''
+                        history: []
                     }
                 }
             }
@@ -110,6 +112,39 @@ export class ProjectsRepository {
 
         return { id: sectionId.toString() }
     }
+
+
+    async addSectionMessage(
+        projectId: string, sectionId: string, messageInfo: SectionHistoryMessage
+    ): Promise<void> {
+        const result = await this.projects.updateOne(
+            {
+                _id: new ObjectId(projectId)
+            },
+            {
+                "$push": {
+                    "sections.$[elem].history": {
+                        content: messageInfo.content,
+                        type: messageInfo.type
+                    }
+                }
+            },
+            {
+                "arrayFilters": [
+                    {
+                        "elem.id": { $eq: new ObjectId(sectionId) }
+                    }
+                ]
+            }
+        )
+
+        if (result.matchedCount !== 1)
+            throw new ProjectNotFound(projectId)
+
+        if (result.modifiedCount !== 1)
+            throw new ProjectSectionNotFound(projectId, sectionId)
+    }
+
 
     async deleteSection(projectId: string, sectionId: string): Promise<void> {
         const result = await this.projects.updateOne(

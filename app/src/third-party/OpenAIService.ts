@@ -151,6 +151,12 @@ export class OpenAIService {
                 content: prompt.developerText
             })
 
+        if (prompt.systemText !== undefined)
+            input.unshift({
+                role: 'system',
+                content: prompt.systemText
+            })
+
         // ******* request
         const response = await this.client.responses.create({
             model: prompt.model,

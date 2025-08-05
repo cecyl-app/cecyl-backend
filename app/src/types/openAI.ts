@@ -13,6 +13,7 @@ export type OpenAITool = {
 type OpenAIBasePrompt = {
     userText: string;
     developerText?: string;
+    systemText?: string;
     model: string;
 }
 

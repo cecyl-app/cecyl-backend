@@ -2,10 +2,15 @@ import { ObjectId } from "@fastify/mongodb";
 import { OpenAIResponseId, VectorStoreId } from "./openAI.js";
 import OpenAI from "openai";
 
+export type SectionHistoryMessage = {
+    content: string;
+    type: 'request' | 'response' | 'improve'
+}
+
 export type ProjectSection = {
     id: ObjectId;
     name: string;
-    content: string;
+    history: SectionHistoryMessage[];
 }
 
 export type Project = {

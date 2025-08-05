@@ -134,7 +134,7 @@ async function createProject(
     await openAIService.sendMessage(result.id, {
         model: process.env.OPENAI_MODEL ?? 'gpt-4o-mini',
         userText: constants.ai.messages.projectContextPrefix + projectInfo.context,
-        developerText: constants.ai.messages.projectDeveloperText
+        systemText: constants.ai.messages.projectSystemText
     })
 
     return result
@@ -187,9 +187,21 @@ const getProjectResponseBodySchema = {
                 properties: {
                     id: { type: 'string' },
                     name: { type: 'string' },
-                    content: { type: 'string' }
+                    history: {
+                        type: 'array',
+                        items: {
+                            type: 'object',
+                            properties: {
+                                content: { type: 'string' },
+                                type: {
+                                    enum: ['request', 'response', 'improve']
+                                }
+                            },
+                            required: ['content', 'type']
+                        }
+                    }
                 },
-                required: ['id', 'name', 'content']
+                required: ['id', 'name', 'history']
             }
         }
     },
@@ -215,7 +227,11 @@ async function getProject(
     const result = {
         name: project.name,
         context: project.context,
-        sections: project.sections
+        sections: project.sections.map(s => ({
+            id: s.id.toString(),
+            name: s.name,
+            history: s.history
+        }))
     }
 
     return result
