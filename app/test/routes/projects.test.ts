@@ -10,6 +10,7 @@ import { ConversationsTestUtils } from '../test-utils/ConversationsTestUtils.js'
  * TODO: types.d.ts is not imported in test/ files and can only be manually imported
  **/
 import * as extendedFastify from '../../src/types/index.js'
+import { ResponseTestUtils } from '../test-utils/ResponseTestUtils.js';
 
 let app: FastifyInstance
 
@@ -35,20 +36,26 @@ describe('projects', () => {
         const TEST_PROJECT_CONTEXT = 'my project context'
 
         // create project
-        const createProjectResponse = await RequestExecutor.createProject(app,
-            TEST_PROJECT_NAME, TEST_PROJECT_CONTEXT)
+        const createProjectResponse = await RequestExecutor.createProject(app, {
+            name: TEST_PROJECT_NAME,
+            context: TEST_PROJECT_CONTEXT,
+            language: 'english'
+        })
+        ResponseTestUtils.assertStatus201(createProjectResponse)
 
         const projectId = createProjectResponse.json<CreateProjectResponseBody>().id
         console.log(`projectId: ${projectId}`)
 
         // list projects
         const listProjectsResponse = await RequestExecutor.listProjects(app)
+        ResponseTestUtils.assertStatus200(listProjectsResponse)
 
         let projects = listProjectsResponse.json<ListProjectsResponseBody>()
         expect(projects.map(p => p.id)).toContain(projectId)
 
         // get the project info
         const getProjectResponse = await RequestExecutor.getProjectInfo(app, projectId)
+        ResponseTestUtils.assertStatus200(getProjectResponse)
 
         const projectInfo = getProjectResponse.json<GetProjectResponseBody>()
         expect(projectInfo).toMatchObject({
@@ -58,10 +65,12 @@ describe('projects', () => {
         });
 
         // delete the project
-        await RequestExecutor.deleteProject(app, projectId)
+        const deleteProjectResponse = await RequestExecutor.deleteProject(app, projectId)
+        ResponseTestUtils.assertStatus200(deleteProjectResponse)
 
         // list projects after delete
         const listProjectsResponse2 = await RequestExecutor.listProjects(app)
+        ResponseTestUtils.assertStatus200(listProjectsResponse)
 
         projects = listProjectsResponse2.json<ListProjectsResponseBody>()
         expect(projects.map(p => p.id)).not.toContain(projectId)

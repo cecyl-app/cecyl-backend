@@ -6,6 +6,7 @@ import fastifyMongodb from "@fastify/mongodb";
 
 import filesRoutes from './routes/files.js'
 import projectsRoutes from './routes/projects.js'
+import projectSectionsRoutes from './routes/projects-sections.js'
 import { OpenAIService } from "./third-party/OpenAIService.js";
 import { ProjectsRepository } from "./repositories/ProjectsRepository.js";
 import { ConversationsRepository } from "./repositories/ConversationsRepository.js";
@@ -28,6 +29,7 @@ export default async function build(opts = {}) {
 
     app.register(filesRoutes)
     app.register(projectsRoutes)
+    app.register(projectSectionsRoutes)
 
     return app;
 }

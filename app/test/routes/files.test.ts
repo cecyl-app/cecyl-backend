@@ -13,6 +13,7 @@ import { ConversationsTestUtils } from '../test-utils/ConversationsTestUtils.js'
  * TODO: types.d.ts is not imported in test/ files and can only be manually imported
  **/
 import * as extendedFastify from '../../src/types/index.js'
+import { ResponseTestUtils } from '../test-utils/ResponseTestUtils.js';
 
 let app: FastifyInstance
 
@@ -39,12 +40,14 @@ describe('search-files - shared vector store', () => {
         form.append('search_file', Readable.from('test content'), { filename: 'test-search-file.txt' })
 
         const uploadFileResponse = await RequestExecutor.uploadSharedFiles(app, form)
+        ResponseTestUtils.assertStatus201(uploadFileResponse)
 
         const fileId = uploadFileResponse.json<UploadFilesResponseBody>()[0].id
         console.log(`fileId: ${fileId}`)
 
         // list the uploaded files
         const listFilesResponse = await RequestExecutor.listSharedFiles(app)
+        ResponseTestUtils.assertStatus200(listFilesResponse)
 
         const fileInfo = listFilesResponse.json<ListFilesResponseBody>()
             .find(file => file.id === fileId);
@@ -53,10 +56,12 @@ describe('search-files - shared vector store', () => {
         console.log(`fileInfo: ${JSON.stringify(fileInfo)}`)
 
         // delete the uploaded file
-        await RequestExecutor.deleteSharedFile(app, fileId)
+        const deleteFileResponse = await RequestExecutor.deleteSharedFile(app, fileId)
+        ResponseTestUtils.assertStatus200(deleteFileResponse)
 
         // list again the uploaded files but now won't find the initial file
         const secondListFilesResponse = await RequestExecutor.listSharedFiles(app)
+        ResponseTestUtils.assertStatus200(secondListFilesResponse)
 
         expect(secondListFilesResponse.json<ListFilesResponseBody>().some(file => file.id === fileId))
             .toBeFalsy();
@@ -68,11 +73,13 @@ describe('search-files - project vector store', () => {
     let projectId: string
 
     beforeAll(async () => {
-        const createProjectResponse = await RequestExecutor.createProject(app,
-            'my project', 'my project context')
+        const createProjectResponse = await RequestExecutor.createProject(app, {
+            name: 'my project',
+            context: 'my project context',
+            language: 'italian'
+        })
 
         projectId = createProjectResponse.json<CreateProjectResponseBody>().id
-        // console.log('projectId: ' + projectId)
     })
 
 
@@ -82,12 +89,14 @@ describe('search-files - project vector store', () => {
         form.append('search_file', Readable.from('test content'), { filename: 'test-search-file.txt' })
 
         const uploadFileResponse = await RequestExecutor.uploadProjectFiles(app, projectId, form)
+        ResponseTestUtils.assertStatus201(uploadFileResponse)
 
         const fileId = uploadFileResponse.json<UploadFilesResponseBody>()[0].id
         console.log(`fileId: ${fileId}`)
 
         // list the uploaded files
         const listFilesResponse = await RequestExecutor.listProjectFiles(app, projectId)
+        ResponseTestUtils.assertStatus200(listFilesResponse)
 
         const fileInfo = listFilesResponse.json<ListFilesResponseBody>()
             .find(file => file.id === fileId);
@@ -96,10 +105,12 @@ describe('search-files - project vector store', () => {
         console.log(`fileInfo: ${JSON.stringify(fileInfo)}`)
 
         // delete the uploaded file
-        await RequestExecutor.deleteProjectFile(app, projectId, fileId)
+        const deleteFileResponse = await RequestExecutor.deleteProjectFile(app, projectId, fileId)
+        ResponseTestUtils.assertStatus200(deleteFileResponse)
 
         // list again the uploaded files but now won't find the initial file
         const secondListFilesResponse = await RequestExecutor.listProjectFiles(app, projectId)
+        ResponseTestUtils.assertStatus200(secondListFilesResponse)
 
         expect(secondListFilesResponse.json<ListFilesResponseBody>().some(file => file.id === fileId))
             .toBeFalsy();

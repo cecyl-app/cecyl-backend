@@ -11,7 +11,10 @@ install:
 
 
 build:
-	cd ${APP_FOLDER} && npm run build && npx eslint src/ test/
+	echo "Building..."
+	cd ${APP_FOLDER} && npm run build
+	echo "Linting..."
+	cd ${APP_FOLDER} && npx eslint src/ test/
 
 
 run: build

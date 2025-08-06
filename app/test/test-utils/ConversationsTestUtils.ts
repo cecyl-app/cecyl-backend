@@ -1,4 +1,4 @@
-import { ConversationsRepository } from "../../src/repositories/ConversationsRepository";
+import { ConversationsRepository } from "../../src/repositories/ConversationsRepository.js";
 
 export class ConversationsTestUtils {
     static async deleteAllConversations(conversationsRepo: ConversationsRepository): Promise<void> {

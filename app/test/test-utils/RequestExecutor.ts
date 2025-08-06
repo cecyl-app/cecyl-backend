@@ -1,24 +1,16 @@
 import FormData from 'form-data'
 import { FastifyInstance } from "fastify";
 
-const PROJECTS_ROUTE_PREFIX = '/projects'
+import { CreateProjectRequestBody } from '../../src/routes/projects.js'
+import { CreateSectionRequestBody, SendSectionImproveRequestBody, SendSectionPromptRequestBody } from '../../src/routes/projects-sections.js'
 
 export class RequestExecutor {
     // ****************************** Projects APIs
-    /**
-     * @param app 
-     * @param name project name
-     * @param context project context
-     * @returns 
-     */
-    static async createProject(app: FastifyInstance, name: string, context: string) {
+    static async createProject(app: FastifyInstance, projectInfo: CreateProjectRequestBody) {
         return await app.inject({
             method: 'POST',
-            url: `${PROJECTS_ROUTE_PREFIX}`,
-            body: {
-                name: name,
-                context: context
-            }
+            url: `/projects`,
+            body: projectInfo
         })
     }
 
@@ -42,7 +34,43 @@ export class RequestExecutor {
     static async deleteProject(app: FastifyInstance, projectId: string) {
         return await app.inject({
             method: 'DELETE',
-            url: `${PROJECTS_ROUTE_PREFIX}/${projectId}`
+            url: `/projects/${projectId}`
+        });
+    }
+
+
+    // ****************************** Project sections APIs
+    static async createSection(app: FastifyInstance, projectId: string, sectionInfo: CreateSectionRequestBody) {
+        return await app.inject({
+            method: 'POST',
+            url: `/projects/${projectId}/sections`,
+            body: sectionInfo
+        })
+    }
+
+
+    static async sendAskPrompt(app: FastifyInstance, projectId: string, sectionId: string, body: SendSectionPromptRequestBody) {
+        return await app.inject({
+            method: 'POST',
+            url: `/projects/${projectId}/sections/${sectionId}/ask`,
+            body: body
+        })
+    }
+
+
+    static async sendImprovePrompt(app: FastifyInstance, projectId: string, sectionId: string, body: SendSectionImproveRequestBody) {
+        return await app.inject({
+            method: 'POST',
+            url: `/projects/${projectId}/sections/${sectionId}/improve`,
+            body: body
+        });
+    }
+
+
+    static async deleteSection(app: FastifyInstance, projectId: string, sectionId: string) {
+        return await app.inject({
+            method: 'DELETE',
+            url: `/projects/${projectId}/sections/${sectionId}`
         });
     }
 
