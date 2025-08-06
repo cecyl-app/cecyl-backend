@@ -7,6 +7,7 @@ import { ConversationsRepository } from "../repositories/ConversationsRepository
 import constants from "../constants.js";
 import { ProjectNotFound } from "../exceptions/project-errors.js";
 import { ConversationNotFoundError } from "../exceptions/conversation-errors.js";
+import { OpenAIResponseError } from "../exceptions/openai-error.js";
 
 
 export default function routes(fastify: FastifyInstance, _options: FastifyServerOptions) {
@@ -89,6 +90,9 @@ export default function routes(fastify: FastifyInstance, _options: FastifyServer
 
         if ([ProjectNotFound, ConversationNotFoundError].some(etype => error instanceof etype))
             reply.status(404).send({ message: error.message })
+
+        if (error instanceof OpenAIResponseError)
+            reply.status(500).send({ message: error.message })
     })
 }
 
@@ -97,9 +101,10 @@ const createProjectRequestBodySchema = {
     type: 'object',
     properties: {
         name: { type: 'string' },
-        context: { type: 'string' }
+        context: { type: 'string' },
+        language: { type: 'string' }
     },
-    required: ['name', 'context']
+    required: ['name', 'context', 'language']
 } as const;
 export type CreateProjectRequestBody = FromSchema<typeof createProjectRequestBodySchema>;
 
@@ -114,8 +119,11 @@ export type CreateProjectResponseBody = FromSchema<typeof createProjectResponseB
 
 /**
  * Create a new project with no section. a dedicated vector store is automatically created
- * @param request 
- * @param reply 
+ * @param projectInfo 
+ * @param projectsRepo 
+ * @param conversationsRepo 
+ * @param openAIService 
+ * @returns 
  */
 async function createProject(
     projectInfo: CreateProjectRequestBody,
@@ -133,7 +141,7 @@ async function createProject(
     await conversationsRepo.createConversation(result.id, projectInfo.name)
     await openAIService.sendMessage(result.id, {
         model: process.env.OPENAI_MODEL ?? 'gpt-4o-mini',
-        userText: constants.ai.messages.projectContextPrefix + projectInfo.context,
+        userText: constants.ai.messages.projectContextPrefix(projectInfo.language) + projectInfo.context,
         systemText: constants.ai.messages.projectSystemText
     })
 
@@ -252,7 +260,6 @@ export type DeleteProjectRequestParams = FromSchema<typeof deleteProjectRequestP
  * @param projectId
  * @param projectsRepo
  * @param openAIService
- * @returns true if the project existed, false otherwise
  */
 async function deleteProject(
     projectId: string,

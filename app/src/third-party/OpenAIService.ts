@@ -8,6 +8,7 @@ import { ConversationsRepository } from '../repositories/ConversationsRepository
 import { ProjectNotFound } from '../exceptions/project-errors.js';
 import { AIResponse } from '../types/mongo.js';
 import constants from '../constants.js';
+import { OpenAIResponseError } from '../exceptions/openai-error.js';
 
 
 export class OpenAIService {
@@ -114,7 +115,7 @@ export class OpenAIService {
 
     /**
      * send a message in the conversation of the specified project. this method automatically
-     * updates the previous response id (see convrrsation state at 
+     * updates the previous response id (see conversation state at 
      * https://platform.openai.com/docs/guides/conversation-state?api-mode=responses#openai-apis-for-conversation-state )
      * stored in the project info. Moreover it appends the message exchange (input and output messages)
      * in the conversation history
@@ -167,11 +168,12 @@ export class OpenAIService {
 
         await this.projectsRepo.updateLastOpenAIResponseId(projectId, response.id)
 
+        const responseStatus = response.status ?? 'incomplete'
         const result = {
             id: response.id,
             createdAt: response.created_at,
             model: response.model,
-            status: response.status ?? 'incomplete',
+            status: responseStatus,
             outputText: response.output.filter(o => o.type === 'message')
                 .map(m => m.content).flat().map(o => o.type === 'output_text' ? o.text : o.refusal)
                 .join('\n'),
@@ -185,6 +187,9 @@ export class OpenAIService {
             },
             aiResponse: result
         })
+
+        if (response.error !== null)
+            throw new OpenAIResponseError(response.id, response.error, responseStatus, result.incompleteDetails)
 
         return result
     }

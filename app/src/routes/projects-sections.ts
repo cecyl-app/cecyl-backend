@@ -3,15 +3,14 @@ import { FromSchema } from "json-schema-to-ts";
 
 import { ProjectsRepository } from "../repositories/ProjectsRepository.js";
 import { OpenAIService } from "../third-party/OpenAIService.js";
-import { ConversationsRepository } from "../repositories/ConversationsRepository.js";
 import constants from "../constants.js";
-import { ProjectNotFound } from "../exceptions/project-errors.js";
+import { ProjectNotFound, ProjectSectionNotFound } from "../exceptions/project-errors.js";
 import { ConversationNotFoundError } from "../exceptions/conversation-errors.js";
+import { OpenAIResponseError } from "../exceptions/openai-error.js";
 
 
 export default function routes(fastify: FastifyInstance, _options: FastifyServerOptions) {
     const projectsRepo = fastify.projectsRepo
-    const conversationsRepo = fastify.conversationsRepo
     const openAIService = fastify.openAIService
 
     fastify.post<{ Body: CreateSectionRequestBody, Params: CreateSectionRequestParams, Reply: CreateSectionResponseBody }>(
@@ -36,25 +35,46 @@ export default function routes(fastify: FastifyInstance, _options: FastifyServer
         }
     )
 
-    fastify.post<{ Body: CreateSectionRequestBody, Params: CreateSectionRequestParams, Reply: CreateSectionResponseBody }>(
-        '/projects/:projectId/sections/:sectionId/prompt',
+    fastify.post<{ Body: SendSectionPromptRequestBody, Params: SendSectionPromptRequestParams, Reply: SendSectionPromptResponseBody }>(
+        '/projects/:projectId/sections/:sectionId/ask',
         {
             schema: {
-                body: createSectionRequestBodySchema,
-                params: createSectionRequestParamsSchema,
+                body: sendSectionPromptRequestBodySchema,
+                params: sendSectionPromptRequestParamsSchema,
                 response: {
-                    201: createSectionResponseBodySchema
+                    200: sendSectionPromptResponseBodySchema
                 }
             }
         },
         async (request, reply) => {
-            const sectionInfo = {
+            const promptInfo = {
                 projectId: request.params.projectId,
-                name: request.body.name
+                sectionId: request.params.sectionId,
+                prompt: request.body.prompt
             }
-            const result = await createSection(sectionInfo, projectsRepo)
+            const result = await sendPrompt(promptInfo, projectsRepo, openAIService)
 
-            reply.status(201).send(result)
+            reply.status(200).send(result)
+        }
+    )
+
+    fastify.post<{ Body: SendSectionImproveRequestBody, Params: SendSectionImproveRequestParams }>(
+        '/projects/:projectId/sections/:sectionId/improve',
+        {
+            schema: {
+                body: sendSectionImproveRequestBodySchema,
+                params: sendSectionImproveRequestParamsSchema
+            }
+        },
+        async (request, reply) => {
+            const improveInfo = {
+                projectId: request.params.projectId,
+                sectionId: request.params.sectionId,
+                prompt: request.body.prompt
+            }
+            await sendImprove(improveInfo, projectsRepo, openAIService)
+
+            reply.status(200).send()
         }
     )
 
@@ -79,8 +99,11 @@ export default function routes(fastify: FastifyInstance, _options: FastifyServer
     fastify.setErrorHandler(function (error, request, reply) {
         fastify.log.error(error)
 
-        if ([ProjectNotFound, ConversationNotFoundError].some(etype => error instanceof etype))
+        if ([ProjectNotFound, ConversationNotFoundError, ProjectSectionNotFound].some(etype => error instanceof etype))
             reply.status(404).send({ message: error.message })
+
+        if (error instanceof OpenAIResponseError)
+            reply.status(500).send({ message: error.message })
     })
 }
 
@@ -114,8 +137,9 @@ export type CreateSectionResponseBody = FromSchema<typeof createSectionResponseB
 
 /**
  * Create a new section for the specified project
- * @param request 
- * @param reply 
+ * @param sectionInfo 
+ * @param projectsRepo 
+ * @returns the section id
  */
 async function createSection(
     sectionInfo: CreateSectionRequestBody & CreateSectionRequestParams,
@@ -155,19 +179,90 @@ export type SendSectionPromptResponseBody = FromSchema<typeof sendSectionPromptR
 
 /**
  * Send a request to the AI for a specific section
- * @param request 
- * @param reply 
+ * @param promptInfo 
+ * @param projectsRepo 
+ * @returns the AI text response
  */
 async function sendPrompt(
-    sectionInfo: SendSectionPromptRequestBody & SendSectionPromptRequestParams,
+    promptInfo: SendSectionPromptRequestBody & SendSectionPromptRequestParams,
     projectsRepo: ProjectsRepository,
+    openAIService: OpenAIService
 ): Promise<SendSectionPromptResponseBody> {
-    await projectsRepo.addSectionMessage(
-        sectionInfo.projectId,
-        sectionInfo.sectionId,
+    const response = await openAIService.sendMessage(
+        promptInfo.projectId,
         {
-            content: sectionInfo.prompt,
+            model: process.env.OPENAI_MODEL ?? 'gpt-4o-mini',
+            userText: constants.ai.messages.sectionPromptPrefix(promptInfo.sectionId) + promptInfo.prompt
+        }
+    )
+
+    await projectsRepo.addSectionMessage(
+        promptInfo.projectId,
+        promptInfo.sectionId,
+        {
+            content: promptInfo.prompt,
             type: 'request'
+        }
+    )
+
+    await projectsRepo.addSectionMessage(
+        promptInfo.projectId,
+        promptInfo.sectionId,
+        {
+            content: response.outputText,
+            type: 'response'
+        }
+    )
+
+    return {
+        output: response.outputText
+    }
+}
+
+
+const sendSectionImproveRequestBodySchema = {
+    type: 'object',
+    properties: {
+        prompt: { type: 'string' }
+    },
+    required: ['prompt']
+} as const;
+export type SendSectionImproveRequestBody = FromSchema<typeof sendSectionImproveRequestBodySchema>;
+
+const sendSectionImproveRequestParamsSchema = {
+    type: 'object',
+    properties: {
+        projectId: { type: 'string' },
+        sectionId: { type: 'string' }
+    },
+    required: ['projectId', 'sectionId']
+} as const;
+export type SendSectionImproveRequestParams = FromSchema<typeof sendSectionImproveRequestParamsSchema>;
+
+/**
+ * Send to the AI an improve to a previous response for a specific section
+ * @param improveInfo 
+ * @param projectsRepo 
+ */
+async function sendImprove(
+    improveInfo: SendSectionImproveRequestBody & SendSectionImproveRequestParams,
+    projectsRepo: ProjectsRepository,
+    openAIService: OpenAIService
+): Promise<void> {
+    await openAIService.sendMessage(
+        improveInfo.projectId,
+        {
+            model: process.env.OPENAI_MODEL ?? 'gpt-4o-mini',
+            userText: constants.ai.messages.sectionImprovePrefix(improveInfo.sectionId) + improveInfo.prompt
+        }
+    )
+
+    await projectsRepo.addSectionMessage(
+        improveInfo.projectId,
+        improveInfo.sectionId,
+        {
+            content: improveInfo.prompt,
+            type: 'improve'
         }
     )
 }
@@ -188,7 +283,6 @@ export type DeleteSectionRequestParams = FromSchema<typeof deleteSectionRequestP
  * @param projectId
  * @param projectsRepo
  * @param openAIService
- * @returns true if the project existed, false otherwise
  */
 async function deleteSection(
     sectionInfo: DeleteSectionRequestParams,
