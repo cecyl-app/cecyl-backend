@@ -11,7 +11,7 @@ import { ConversationsTestUtils } from '../test-utils/ConversationsTestUtils.js'
  **/
 import * as extendedFastify from '../../src/types/index.js'
 import { ResponseTestUtils } from '../test-utils/ResponseTestUtils.js';
-import { CreateSectionResponseBody } from '../../src/routes/projects-sections.js';
+import { CreateSectionResponseBody, SendSectionPromptResponseBody } from '../../src/routes/projects-sections.js';
 
 let app: FastifyInstance
 
@@ -77,6 +77,74 @@ describe('project sections', () => {
         project = getProjectInfoResponse2.json<GetProjectResponseBody>()
         section = project.sections.find(s => s.id === sectionId)
         expect(section).toBeUndefined()
+    }, 30000);
+
+    test('send "request" type prompt in section', async () => {
+        const TEST_SECTION_NAME = 'test section'
+        const PROMPT = '1+1=?'
+
+        // create section
+        const createSectionResponse = await RequestExecutor.createSection(app, projectId, {
+            name: TEST_SECTION_NAME
+        })
+        const sectionId = createSectionResponse.json<CreateSectionResponseBody>().id
+
+        // send ask prompt
+        const sendAskPromptResponse = await RequestExecutor.sendAskPrompt(app, projectId, sectionId, {
+            prompt: PROMPT
+        })
+        const output = sendAskPromptResponse.json<SendSectionPromptResponseBody>().output
+        ResponseTestUtils.assertStatus200(sendAskPromptResponse)
+        expect(output.length).toBeGreaterThan(0)
+
+        // get project info
+        const getProjectInfoResponse = await RequestExecutor.getProjectInfo(app, projectId)
+
+        const project = getProjectInfoResponse.json<GetProjectResponseBody>()
+        const sectionHistory = project.sections.find(s => s.id === sectionId)!.history
+        expect(sectionHistory.length).toBe(2)
+        expect(sectionHistory[0]).toMatchObject({
+            type: 'request',
+            content: PROMPT
+        })
+        expect(sectionHistory[1]).toMatchObject({
+            type: 'response',
+            content: output
+        })
+
+        // delete section
+        await RequestExecutor.deleteSection(app, projectId, sectionId)
+    }, 30000);
+
+    test('send "improve" type prompt in section', async () => {
+        const TEST_SECTION_NAME = 'test section'
+        const IMPROVE_PROMPT = '1+1=2'
+
+        // create section
+        const createSectionResponse = await RequestExecutor.createSection(app, projectId, {
+            name: TEST_SECTION_NAME
+        })
+        const sectionId = createSectionResponse.json<CreateSectionResponseBody>().id
+
+        // send improve prompt
+        const sendImprovePromptResponse = await RequestExecutor.sendImprovePrompt(app, projectId, sectionId, {
+            prompt: IMPROVE_PROMPT
+        })
+        ResponseTestUtils.assertStatus200(sendImprovePromptResponse)
+
+        // get project info
+        const getProjectInfoResponse = await RequestExecutor.getProjectInfo(app, projectId)
+
+        const project = getProjectInfoResponse.json<GetProjectResponseBody>()
+        const sectionHistory = project.sections.find(s => s.id === sectionId)!.history
+        expect(sectionHistory.length).toBe(1)
+        expect(sectionHistory[0]).toMatchObject({
+            type: 'improve',
+            content: IMPROVE_PROMPT
+        })
+
+        // delete section
+        await RequestExecutor.deleteSection(app, projectId, sectionId)
     }, 30000);
 
     afterAll(async () => {
