@@ -13,6 +13,7 @@ type MongoClient = mongodb.MongoClient
 type ProjectFields = Parameters<typeof buildProjectionOption<Project>>[0]
 
 type ProjectInfo = Pick<Project, 'name' | 'context' | 'vectorStoreId'>
+type ProjectUpdateInfo = Pick<Project, 'name' | 'context'> & { sectionIdsOrder: string[] }
 
 
 export class ProjectsRepository {
@@ -26,14 +27,32 @@ export class ProjectsRepository {
 
 
     async createProject(projectInfo: ProjectInfo): Promise<{ id: string }> {
-        const project = {
+        const project: Project = {
             ...projectInfo,
             lastOpenAIResponseId: undefined,
-            sections: []
+            sections: [],
+            sectionIdsOrder: []
         }
         const result = await this.projects.insertOne(project)
 
         return { id: result.insertedId.toString() }
+    }
+
+
+    async updateProjectInfo(id: string, projectUpdateInfo: ProjectUpdateInfo): Promise<void> {
+        const result = await this.projects.updateOne(
+            { _id: new ObjectId(id) },
+            {
+                '$set': {
+                    name: projectUpdateInfo.name,
+                    context: projectUpdateInfo.context,
+                    sectionIdsOrder: projectUpdateInfo.sectionIdsOrder.map(sid => new ObjectId(sid))
+                }
+            }
+        )
+
+        if (result.matchedCount !== 1)
+            throw new ProjectNotFound(id)
     }
 
 
@@ -102,7 +121,8 @@ export class ProjectsRepository {
                         id: sectionId,
                         name: name,
                         history: []
-                    }
+                    },
+                    sectionIdsOrder: sectionId
                 }
             }
         )
@@ -147,13 +167,16 @@ export class ProjectsRepository {
 
 
     async deleteSection(projectId: string, sectionId: string): Promise<void> {
+        const sectionObjectId = new ObjectId(sectionId)
+
         const result = await this.projects.updateOne(
             { _id: new ObjectId(projectId) },
             {
                 "$pull": {
                     sections: {
-                        id: new ObjectId(sectionId)
-                    }
+                        id: sectionObjectId
+                    },
+                    sectionIdsOrder: sectionObjectId
                 }
             }
         )

@@ -44,7 +44,7 @@ describe('project sections', () => {
         projectId = createProjectResponse.json<CreateProjectResponseBody>().id
     })
 
-    test('CRUD workflow', async () => {
+    test('Create-Read-Delete workflow', async () => {
         const TEST_SECTION_NAME = 'test section'
 
         // create section
@@ -59,6 +59,7 @@ describe('project sections', () => {
         const getProjectInfoResponse = await RequestExecutor.getProjectInfo(app, projectId)
 
         let project = getProjectInfoResponse.json<GetProjectResponseBody>()
+        expect(project.sectionIdsOrder).toContain(sectionId)
         let section = project.sections.find(s => s.id === sectionId)
         expect(section).toBeDefined()
         expect(section).toMatchObject({
@@ -75,6 +76,7 @@ describe('project sections', () => {
         const getProjectInfoResponse2 = await RequestExecutor.getProjectInfo(app, projectId)
 
         project = getProjectInfoResponse2.json<GetProjectResponseBody>()
+        expect(project.sectionIdsOrder).not.toContain(sectionId)
         section = project.sections.find(s => s.id === sectionId)
         expect(section).toBeUndefined()
     }, 30000);

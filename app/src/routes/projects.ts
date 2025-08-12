@@ -33,6 +33,22 @@ export default function routes(fastify: FastifyInstance, _options: FastifyServer
         }
     )
 
+    fastify.put<{ Body: UpdateProjectRequestBody, Params: UpdateProjectRequestParams }>(
+        '/projects/:projectId',
+        {
+            schema: {
+                params: updateProjectRequestParamsSchema,
+                body: updateProjectRequestBodySchema
+            }
+        },
+        async (request, reply) => {
+            const updateProjectInfo = request.body
+            await updateProject(request.params.projectId, updateProjectInfo, projectsRepo, openAIService)
+
+            reply.status(200).send()
+        }
+    )
+
     fastify.get<{ Reply: ListProjectsResponseBody }>(
         '/projects',
         {
@@ -149,6 +165,60 @@ async function createProject(
 }
 
 
+const updateProjectRequestParamsSchema = {
+    type: 'object',
+    properties: {
+        projectId: { type: 'string' }
+    },
+    required: ['projectId'],
+} as const;
+export type UpdateProjectRequestParams = FromSchema<typeof updateProjectRequestParamsSchema>;
+
+const updateProjectRequestBodySchema = {
+    type: 'object',
+    properties: {
+        name: { type: 'string' },
+        context: { type: 'string' },
+        sectionIdsOrder: {
+            type: 'array',
+            items: {
+                type: 'string',
+            }
+        },
+        language: { type: 'string' }
+    },
+    required: ['name', 'context', 'sectionIdsOrder', 'language']
+} as const;
+export type UpdateProjectRequestBody = FromSchema<typeof updateProjectRequestBodySchema>;
+
+/**
+ * update a project info (not the sections)
+ * @param projectUpdateInfo 
+ * @param projectsRepo 
+ * @param openAIService 
+ * @returns 
+ */
+async function updateProject(
+    projectId: string,
+    projectUpdateInfo: UpdateProjectRequestBody,
+    projectsRepo: ProjectsRepository,
+    openAIService: OpenAIService
+): Promise<void> {
+    const project = await projectsRepo.getProject(projectId, ['context'])
+    if (project == null)
+        throw new ProjectNotFound(projectId)
+
+    await projectsRepo.updateProjectInfo(projectId, projectUpdateInfo)
+
+    if (project.context !== projectUpdateInfo.context) {
+        await openAIService.sendMessage(projectId, {
+            model: process.env.OPENAI_MODEL ?? 'gpt-4o-mini',
+            userText: constants.ai.messages.projectContextPrefix(projectUpdateInfo.language) + projectUpdateInfo.context
+        })
+    }
+}
+
+
 const listProjectsResponseBodySchema = {
     type: 'array',
     items: {
@@ -188,6 +258,12 @@ const getProjectResponseBodySchema = {
     properties: {
         name: { type: 'string' },
         context: { type: 'string' },
+        sectionIdsOrder: {
+            type: 'array',
+            items: {
+                type: 'string',
+            }
+        },
         sections: {
             type: 'array',
             items: {
@@ -213,7 +289,7 @@ const getProjectResponseBodySchema = {
             }
         }
     },
-    required: ['name', 'context', 'sections'],
+    required: ['name', 'context', 'sections', 'sectionIdsOrder'],
 } as const;
 export type GetProjectResponseBody = FromSchema<typeof getProjectResponseBodySchema>;
 
@@ -227,7 +303,7 @@ async function getProject(
     projectId: string,
     projectsRepo: ProjectsRepository,
 ): Promise<GetProjectResponseBody | null> {
-    const project = await projectsRepo.getProject(projectId, ['name', 'context', 'sections'])
+    const project = await projectsRepo.getProject(projectId, ['name', 'context', 'sections', 'sectionIdsOrder'])
 
     if (project === null)
         return null
@@ -239,7 +315,8 @@ async function getProject(
             id: s.id.toString(),
             name: s.name,
             history: s.history
-        }))
+        })),
+        sectionIdsOrder: project.sectionIdsOrder.map(sid => sid.toString())
     }
 
     return result

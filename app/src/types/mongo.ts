@@ -19,6 +19,7 @@ export type Project = {
     vectorStoreId: VectorStoreId;
     lastOpenAIResponseId?: OpenAIResponseId;
     sections: ProjectSection[];
+    sectionIdsOrder: ObjectId[];
 }
 
 export type UserPrompt = {

@@ -6,7 +6,11 @@ FROM node:${NODE_VERSION}-alpine AS base
 WORKDIR /usr/src/app
 
 ENV OPENAI_API_KEY=
-ENV DB_CONN_STRING=
+ENV DB_CONN_STRING=mongodb://mongouser:password@db:27017/cecyldb?authSource=admin
+ENV MONGO_INITDB_ROOT_USERNAME=mongouser
+ENV MONGO_INITDB_ROOT_PASSWORD=password
+ENV MONGO_INITDB_DATABASE=cecyldb
+ENV OPENAI_MODEL=gpt-4o-mini
 
 EXPOSE 80
 

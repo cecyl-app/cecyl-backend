@@ -31,7 +31,7 @@ afterAll(async () => {
 
 
 describe('projects', () => {
-    test('CRUD workflow', async () => {
+    test('Create-Read-Delete workflow', async () => {
         const TEST_PROJECT_NAME = 'my test project'
         const TEST_PROJECT_CONTEXT = 'my project context'
 
@@ -61,7 +61,8 @@ describe('projects', () => {
         expect(projectInfo).toMatchObject({
             name: TEST_PROJECT_NAME,
             context: TEST_PROJECT_CONTEXT,
-            sections: []
+            sections: [],
+            sectionIdsOrder: []
         });
 
         // delete the project
@@ -74,5 +75,41 @@ describe('projects', () => {
 
         projects = listProjectsResponse2.json<ListProjectsResponseBody>()
         expect(projects.map(p => p.id)).not.toContain(projectId)
+    }, 30000);
+
+    test('given a project, when updateProject is called, then Project fields are modified', async () => {
+        const TEST_PROJECT_NAME = 'my test project'
+        const TEST_PROJECT_CONTEXT = 'my project context'
+
+        // create project
+        const createProjectResponse = await RequestExecutor.createProject(app, {
+            name: TEST_PROJECT_NAME,
+            context: TEST_PROJECT_CONTEXT,
+            language: 'english'
+        })
+
+        const projectId = createProjectResponse.json<CreateProjectResponseBody>().id
+
+        // update the project info
+        const updateProjectResponse = await RequestExecutor.updateProjectInfo(app, projectId, {
+            name: TEST_PROJECT_NAME + "-new",
+            context: TEST_PROJECT_CONTEXT + "-new",
+            sectionIdsOrder: [],
+            language: 'italian'
+        })
+        ResponseTestUtils.assertStatus200(updateProjectResponse)
+
+        // get the updated project info
+        const getProjectNewResponse = await RequestExecutor.getProjectInfo(app, projectId)
+        const projectNewInfo = getProjectNewResponse.json<GetProjectResponseBody>()
+        expect(projectNewInfo).toMatchObject({
+            name: TEST_PROJECT_NAME + "-new",
+            context: TEST_PROJECT_CONTEXT + "-new",
+            sections: [],
+            sectionIdsOrder: []
+        });
+
+        // delete the project
+        await RequestExecutor.deleteProject(app, projectId)
     }, 30000);
 });
