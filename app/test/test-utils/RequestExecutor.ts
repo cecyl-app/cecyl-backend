@@ -2,7 +2,7 @@ import FormData from 'form-data'
 import { FastifyInstance } from "fastify";
 
 import { CreateProjectRequestBody, UpdateProjectRequestBody } from '../../src/routes/projects.js'
-import { CreateSectionRequestBody, SendSectionImproveRequestBody, SendSectionPromptRequestBody } from '../../src/routes/projects-sections.js'
+import { CreateSectionRequestBody, SendSectionImproveRequestBody, SendSectionPromptRequestBody, UpdateSectionRequestBody } from '../../src/routes/projects-sections.js'
 
 export class RequestExecutor {
     // ****************************** Projects APIs
@@ -52,6 +52,15 @@ export class RequestExecutor {
         return await app.inject({
             method: 'POST',
             url: `/projects/${projectId}/sections`,
+            body: sectionInfo
+        })
+    }
+
+
+    static async updateSection(app: FastifyInstance, projectId: string, sectionId: string, sectionInfo: UpdateSectionRequestBody) {
+        return await app.inject({
+            method: 'PUT',
+            url: `/projects/${projectId}/sections/${sectionId}`,
             body: sectionInfo
         })
     }

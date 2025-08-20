@@ -35,6 +35,26 @@ export default function routes(fastify: FastifyInstance, _options: FastifyServer
         }
     )
 
+    fastify.put<{ Body: UpdateSectionRequestBody, Params: UpdateSectionRequestParams }>(
+        '/projects/:projectId/sections/:sectionId',
+        {
+            schema: {
+                body: updateSectionRequestBodySchema,
+                params: updateSectionRequestParamsSchema
+            }
+        },
+        async (request, reply) => {
+            const sectionInfo = {
+                projectId: request.params.projectId,
+                sectionId: request.params.sectionId,
+                name: request.body.name
+            }
+            await updateSection(sectionInfo, projectsRepo)
+
+            reply.status(200).send()
+        }
+    )
+
     fastify.post<{ Body: SendSectionPromptRequestBody, Params: SendSectionPromptRequestParams, Reply: SendSectionPromptResponseBody }>(
         '/projects/:projectId/sections/:sectionId/ask',
         {
@@ -146,6 +166,41 @@ async function createSection(
     projectsRepo: ProjectsRepository,
 ): Promise<CreateSectionResponseBody> {
     return await projectsRepo.createSection(sectionInfo.projectId, sectionInfo.name)
+}
+
+
+const updateSectionRequestBodySchema = {
+    type: 'object',
+    properties: {
+        name: { type: 'string' }
+    },
+    required: ['name']
+} as const;
+export type UpdateSectionRequestBody = FromSchema<typeof updateSectionRequestBodySchema>;
+
+const updateSectionRequestParamsSchema = {
+    type: 'object',
+    properties: {
+        projectId: { type: 'string' },
+        sectionId: { type: 'string' }
+    },
+    required: ['projectId', 'sectionId']
+} as const;
+export type UpdateSectionRequestParams = FromSchema<typeof updateSectionRequestParamsSchema>;
+
+/**
+ * update a section for the specified project
+ * @param sectionInfo 
+ * @param projectsRepo 
+ * @returns the section id
+ */
+async function updateSection(
+    sectionInfo: UpdateSectionRequestBody & UpdateSectionRequestParams,
+    projectsRepo: ProjectsRepository,
+): Promise<void> {
+    await projectsRepo.updateSection(sectionInfo.projectId, sectionInfo.sectionId, {
+        name: sectionInfo.name
+    })
 }
 
 

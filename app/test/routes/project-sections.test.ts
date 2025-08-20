@@ -44,6 +44,7 @@ describe('project sections', () => {
         projectId = createProjectResponse.json<CreateProjectResponseBody>().id
     })
 
+
     test('Create-Read-Delete workflow', async () => {
         const TEST_SECTION_NAME = 'test section'
 
@@ -80,6 +81,33 @@ describe('project sections', () => {
         section = project.sections.find(s => s.id === sectionId)
         expect(section).toBeUndefined()
     }, 30000);
+
+
+    test('given a project section, when updateSection is called, then section fields are modified', async () => {
+        const TEST_SECTION_NAME = 'test section'
+
+        // create section
+        const createSectionResponse = await RequestExecutor.createSection(app, projectId, {
+            name: TEST_SECTION_NAME
+        })
+        const sectionId = createSectionResponse.json<CreateSectionResponseBody>().id
+
+        // update the section info
+        const updateSectionResponse = await RequestExecutor.updateSection(app, projectId, sectionId, {
+            name: TEST_SECTION_NAME + "-new",
+        })
+        ResponseTestUtils.assertStatus200(updateSectionResponse)
+
+        // get the project info
+        const getProjectResponse = await RequestExecutor.getProjectInfo(app, projectId)
+        const project = getProjectResponse.json<GetProjectResponseBody>()
+        const section = project.sections.find(s => s.id === sectionId)
+        expect(section?.name).toBe(TEST_SECTION_NAME + "-new");
+
+        // delete the section
+        await RequestExecutor.deleteSection(app, projectId, sectionId)
+    }, 30000);
+
 
     test('send "request" type prompt in section', async () => {
         const TEST_SECTION_NAME = 'test section'
@@ -118,6 +146,7 @@ describe('project sections', () => {
         await RequestExecutor.deleteSection(app, projectId, sectionId)
     }, 30000);
 
+
     test('send "improve" type prompt in section', async () => {
         const TEST_SECTION_NAME = 'test section'
         const IMPROVE_PROMPT = '1+1=2'
@@ -148,6 +177,7 @@ describe('project sections', () => {
         // delete section
         await RequestExecutor.deleteSection(app, projectId, sectionId)
     }, 30000);
+
 
     afterAll(async () => {
         await RequestExecutor.deleteProject(app, projectId)

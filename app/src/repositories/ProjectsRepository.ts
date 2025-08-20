@@ -1,6 +1,6 @@
 import { ObjectId, mongodb } from '@fastify/mongodb'
 
-import { Project, SectionHistoryMessage } from "../types/mongo.js";
+import { Project, ProjectSection, SectionHistoryMessage } from "../types/mongo.js";
 import constants from "../constants.js";
 import { buildProjectionOption } from '../utils/mongo-utils.js';
 import { OpenAIResponseId } from '../types/openAI.js';
@@ -14,6 +14,7 @@ type ProjectFields = Parameters<typeof buildProjectionOption<Project>>[0]
 
 type ProjectInfo = Pick<Project, 'name' | 'context' | 'vectorStoreId'>
 type ProjectUpdateInfo = Pick<Project, 'name' | 'context'> & { sectionIdsOrder: string[] }
+type SectionUpdateInfo = Pick<ProjectSection, 'name'>
 
 
 export class ProjectsRepository {
@@ -131,6 +132,31 @@ export class ProjectsRepository {
             throw new ProjectNotFound(projectId)
 
         return { id: sectionId.toString() }
+    }
+
+
+    async updateSection(projectId: string, sectionId: string, updateInfo: SectionUpdateInfo): Promise<void> {
+        const result = await this.projects.updateOne(
+            { _id: new ObjectId(projectId) },
+            {
+                "$set": {
+                    "sections.$[elem].name": updateInfo.name
+                }
+            },
+            {
+                "arrayFilters": [
+                    {
+                        "elem.id": { $eq: new ObjectId(sectionId) }
+                    }
+                ]
+            }
+        )
+
+        if (result.matchedCount !== 1)
+            throw new ProjectNotFound(projectId)
+
+        if (result.modifiedCount !== 1)
+            throw new ProjectSectionNotFound(projectId, sectionId)
     }
 
 
