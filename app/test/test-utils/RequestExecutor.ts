@@ -47,6 +47,15 @@ export class RequestExecutor {
     }
 
 
+    // ****************************** Project report APIs
+    static async generateDocx(app: FastifyInstance, projectId: string) {
+        return await app.inject({
+            method: 'POST',
+            url: `/projects/${projectId}/generateDocx`
+        })
+    }
+
+
     // ****************************** Project sections APIs
     static async createSection(app: FastifyInstance, projectId: string, sectionInfo: CreateSectionRequestBody) {
         return await app.inject({

@@ -44,7 +44,8 @@ Message Format Requirements:
 
     - **Action:** Emit **only** the markdown content for the specified section. 
         Do not add any commentary, explanations, or summaries outside of that section's markdown.
-        Do not include a Markdown header with the id.
+        Do not include the id in the response. Do not include heading level 1 (example: "# Heading level 1") 
+        and heading level 2 (example: "## Heading level 2") in the response.
 
     - **Example**:
         \`\`\`

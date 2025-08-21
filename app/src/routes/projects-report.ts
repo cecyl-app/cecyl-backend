@@ -3,8 +3,6 @@ import { FromSchema } from "json-schema-to-ts";
 
 import { ProjectsRepository } from "../repositories/ProjectsRepository.js";
 import { ProjectNotFound, ProjectSectionNotFound, ProjectSectionUncompleted } from "../exceptions/project-errors.js";
-import { OpenAIResponseError } from "../exceptions/openai-error.js";
-import { Project } from "../types/mongo.js";
 import { ProjectExporterService } from "../services/ProjectExporterService.js";
 
 
@@ -12,16 +10,16 @@ export default function routes(fastify: FastifyInstance, _options: FastifyServer
     const projectsRepo = fastify.projectsRepo
     const projectExporterService = new ProjectExporterService()
 
-    fastify.post<{ Params: GenerateProjectPdfRequestParams }>(
-        '/projects/:projectId/generateMarkdown',
+    fastify.post<{ Params: GenerateProjectDocxRequestParams }>(
+        '/projects/:projectId/generateDocx',
         {
             schema: {
-                params: generateProjectPdfRequestParamsSchema
+                params: generateProjectDocxRequestParamsSchema
             }
         },
         async (request, reply) => {
             const projectInfo = request.params
-            const result = await generatePdf(projectInfo, projectsRepo, projectExporterService)
+            const result = await generateDocx(projectInfo, projectsRepo, projectExporterService)
 
             reply.status(200).header('Content-Type', 'application/octet-stream').send(result)
         }
@@ -40,30 +38,30 @@ export default function routes(fastify: FastifyInstance, _options: FastifyServer
 }
 
 
-const generateProjectPdfRequestParamsSchema = {
+const generateProjectDocxRequestParamsSchema = {
     type: 'object',
     properties: {
         projectId: { type: 'string' }
     },
     required: ['projectId']
 } as const;
-export type GenerateProjectPdfRequestParams = FromSchema<typeof generateProjectPdfRequestParamsSchema>;
+export type GenerateProjectDocxRequestParams = FromSchema<typeof generateProjectDocxRequestParamsSchema>;
 
 /**
- * Generate the pdf of a project
+ * Generate the docx of a project
  * @param projectInfo 
  * @param projectsRepo
- * @returns the pdf as stream
+ * @returns the docx as stream
  */
-async function generatePdf(
-    projectInfo: GenerateProjectPdfRequestParams,
+async function generateDocx(
+    projectInfo: GenerateProjectDocxRequestParams,
     projectsRepo: ProjectsRepository,
     projectExporterService: ProjectExporterService
-): Promise<Buffer> {
+): Promise<ReadableStream<Uint8Array>> {
     const project = await projectsRepo.getProject(projectInfo.projectId, ['name', 'sectionIdsOrder', 'sections'])
 
     if (project === null)
         throw new ProjectNotFound(projectInfo.projectId)
 
-    return await projectExporterService.exportProjectToPdf(projectInfo.projectId, project)
+    return await projectExporterService.exportProjectToMSOfficeWord(projectInfo.projectId, project)
 }
