@@ -3,6 +3,7 @@ import fastifyPlugin from "fastify-plugin";
 import OpenAI from "openai";
 import fastifyMultipart from "@fastify/multipart";
 import fastifyMongodb from "@fastify/mongodb";
+import cors from '@fastify/cors'
 
 import filesRoutes from './routes/files.js'
 import projectsRoutes from './routes/projects.js'
@@ -14,6 +15,10 @@ import { ConversationsRepository } from "./repositories/ConversationsRepository.
 
 export default async function build(opts = {}) {
     const app = fastify(opts);
+
+    await app.register(cors, {
+        origin: '*'
+    })
 
     app.register(fastifyMultipart)
     app.register(fastifyMongodb, {

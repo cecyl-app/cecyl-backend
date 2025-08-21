@@ -34,6 +34,7 @@
         "typescript-eslint": "^8.38.0"
     },
     "dependencies": {
+        "@fastify/cors": "^11.1.0",
         "@fastify/mongodb": "^9.0.2",
         "@fastify/multipart": "^9.0.3",
         "@mohtasham/md-to-docx": "^2.2.1",
