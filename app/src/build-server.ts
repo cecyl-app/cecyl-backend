@@ -7,7 +7,7 @@ import fastifyMongodb from "@fastify/mongodb";
 import filesRoutes from './routes/files.js'
 import projectsRoutes from './routes/projects.js'
 import projectSectionsRoutes from './routes/projects-sections.js'
-import { OpenAIService } from "./third-party/OpenAIService.js";
+import { OpenAIService } from "./services/OpenAIService.js";
 import { ProjectsRepository } from "./repositories/ProjectsRepository.js";
 import { ConversationsRepository } from "./repositories/ConversationsRepository.js";
 

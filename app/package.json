@@ -38,6 +38,7 @@
         "@fastify/multipart": "^9.0.3",
         "fastify": "^5.4.0",
         "fastify-plugin": "^5.0.1",
+        "md-to-pdf": "^5.2.4",
         "openai": "^5.10.2"
     }
 }

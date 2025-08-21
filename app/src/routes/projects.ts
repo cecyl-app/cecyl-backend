@@ -2,7 +2,7 @@ import { FastifyInstance, FastifyServerOptions } from "fastify";
 import { FromSchema } from "json-schema-to-ts";
 
 import { ProjectsRepository } from "../repositories/ProjectsRepository.js";
-import { OpenAIService } from "../third-party/OpenAIService.js";
+import { OpenAIService } from "../services/OpenAIService.js";
 import { ConversationsRepository } from "../repositories/ConversationsRepository.js";
 import constants from "../constants.js";
 import { ProjectNotFound } from "../exceptions/project-errors.js";

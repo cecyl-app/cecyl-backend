@@ -1,4 +1,4 @@
-import { OpenAIService } from "../third-party/OpenAIService.ts"
+import { OpenAIService } from "../services/OpenAIService.ts"
 import { ProjectsRepository } from "../repositories/ProjectsRepository.ts"
 import { ConversationsRepository } from "../repositories/ConversationsRepository.ts"
 

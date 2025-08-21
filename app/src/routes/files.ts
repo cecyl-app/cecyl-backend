@@ -4,7 +4,7 @@ import { FastifyInstance, FastifyServerOptions } from "fastify";
 import { FromSchema } from 'json-schema-to-ts';
 
 import { SavedMultipartFile } from '@fastify/multipart';
-import { OpenAIService } from '../third-party/OpenAIService.js';
+import { OpenAIService } from '../services/OpenAIService.js';
 import { ProjectsRepository } from '../repositories/ProjectsRepository.js';
 import { VectorStoreId } from '../types/openAI.js';
 import { ProjectNotFound } from '../exceptions/project-errors.js';
