@@ -21,7 +21,10 @@ export default function routes(fastify: FastifyInstance, _options: FastifyServer
             const projectInfo = request.params
             const result = await generateDocx(projectInfo, projectsRepo, projectExporterService)
 
-            reply.status(200).header('Content-Type', 'application/octet-stream').send(result)
+            reply
+                .status(200)
+                .header('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+                .send(result)
         }
     )
 
@@ -57,7 +60,7 @@ async function generateDocx(
     projectInfo: GenerateProjectDocxRequestParams,
     projectsRepo: ProjectsRepository,
     projectExporterService: ProjectExporterService
-): Promise<ReadableStream<Uint8Array>> {
+): Promise<Buffer> {
     const project = await projectsRepo.getProject(projectInfo.projectId, ['name', 'sectionIdsOrder', 'sections'])
 
     if (project === null)

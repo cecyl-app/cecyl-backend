@@ -59,7 +59,8 @@ describe('project report', () => {
         // generate report
         const generateDocxResponse = await RequestExecutor.generateDocx(app, projectId)
         ResponseTestUtils.assertStatus200(generateDocxResponse)
-        expect(generateDocxResponse.rawPayload.byteLength).toBeGreaterThan(0)
+        const docxBuffer = Buffer.from(generateDocxResponse.body);
+        expect(docxBuffer.byteLength).toBeGreaterThan(100)
 
         // delete the project
         await RequestExecutor.deleteProject(app, projectId)

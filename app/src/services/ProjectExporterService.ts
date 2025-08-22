@@ -12,11 +12,11 @@ export class ProjectExporterService {
      * @param project 
      * @returns 
      */
-    async exportProjectToMSOfficeWord(projectId: string, project: Project): Promise<ReadableStream<Uint8Array>> {
+    async exportProjectToMSOfficeWord(projectId: string, project: Project): Promise<Buffer> {
         const markdown = await this.exportProjectToMarkdown(projectId, project)
         const docxContent = await mdToDocx.convertMarkdownToDocx(markdown)
 
-        return docxContent.stream()
+        return Buffer.from(await docxContent.arrayBuffer())
     }
 
 
