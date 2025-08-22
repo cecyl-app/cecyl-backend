@@ -16,6 +16,7 @@ import * as extendedFastify from '../../src/types/index.js'
 import { ResponseTestUtils } from '../test-utils/ResponseTestUtils.js';
 
 let app: FastifyInstance
+const TEST_FILE_NAME = 'test-search-file.txt'
 
 beforeAll(async () => {
     app = await build({
@@ -35,36 +36,45 @@ afterAll(async () => {
 
 describe('search-files - shared vector store', () => {
     test('CRUD workflow', async () => {
-        // upload file
-        const form = new FormData()
-        form.append('search_file', Readable.from('test content'), { filename: 'test-search-file.txt' })
+        let fileId = ''
+        try {
+            // upload file
+            const form = new FormData()
+            form.append('search_file', Readable.from('test content'), { filename: TEST_FILE_NAME })
 
-        const uploadFileResponse = await RequestExecutor.uploadSharedFiles(app, form)
-        ResponseTestUtils.assertStatus201(uploadFileResponse)
+            const uploadFileResponse = await RequestExecutor.uploadSharedFiles(app, form)
+            ResponseTestUtils.assertStatus201(uploadFileResponse)
 
-        const fileId = uploadFileResponse.json<UploadFilesResponseBody>()[0].id
-        console.log(`fileId: ${fileId}`)
+            fileId = uploadFileResponse.json<UploadFilesResponseBody>()[0].id
+            console.log(`fileId: ${fileId}`)
 
-        // list the uploaded files
-        const listFilesResponse = await RequestExecutor.listSharedFiles(app)
-        ResponseTestUtils.assertStatus200(listFilesResponse)
+            // list the uploaded files
+            const listFilesResponse = await RequestExecutor.listSharedFiles(app)
+            ResponseTestUtils.assertStatus200(listFilesResponse)
 
-        const fileInfo = listFilesResponse.json<ListFilesResponseBody>()
-            .find(file => file.id === fileId);
-        expect(fileInfo).toBeDefined();
+            const fileInfo = listFilesResponse.json<ListFilesResponseBody>()
+                .find(file => file.id === fileId);
+            expect(fileInfo).toBeDefined();
+            expect(fileInfo?.filename).toBe(TEST_FILE_NAME)
 
-        console.log(`fileInfo: ${JSON.stringify(fileInfo)}`)
+            console.log(`fileInfo: ${JSON.stringify(fileInfo)}`)
+        }
+        catch (err) {
+            if (fileId !== '') {
+                // delete the uploaded file
+                const deleteFileResponse = await RequestExecutor.deleteSharedFile(app, fileId)
+                ResponseTestUtils.assertStatus200(deleteFileResponse)
 
-        // delete the uploaded file
-        const deleteFileResponse = await RequestExecutor.deleteSharedFile(app, fileId)
-        ResponseTestUtils.assertStatus200(deleteFileResponse)
+                // list again the uploaded files but now won't find the initial file
+                const secondListFilesResponse = await RequestExecutor.listSharedFiles(app)
+                ResponseTestUtils.assertStatus200(secondListFilesResponse)
 
-        // list again the uploaded files but now won't find the initial file
-        const secondListFilesResponse = await RequestExecutor.listSharedFiles(app)
-        ResponseTestUtils.assertStatus200(secondListFilesResponse)
+                expect(secondListFilesResponse.json<ListFilesResponseBody>().some(file => file.id === fileId))
+                    .toBeFalsy();
+            }
 
-        expect(secondListFilesResponse.json<ListFilesResponseBody>().some(file => file.id === fileId))
-            .toBeFalsy();
+            throw err
+        }
     }, 30000);
 })
 
@@ -83,41 +93,50 @@ describe('search-files - project vector store', () => {
     })
 
 
-    test('CRUD workflow', async () => {
-        // upload file
-        const form = new FormData()
-        form.append('search_file', Readable.from('test content'), { filename: 'test-search-file.txt' })
-
-        const uploadFileResponse = await RequestExecutor.uploadProjectFiles(app, projectId, form)
-        ResponseTestUtils.assertStatus201(uploadFileResponse)
-
-        const fileId = uploadFileResponse.json<UploadFilesResponseBody>()[0].id
-        console.log(`fileId: ${fileId}`)
-
-        // list the uploaded files
-        const listFilesResponse = await RequestExecutor.listProjectFiles(app, projectId)
-        ResponseTestUtils.assertStatus200(listFilesResponse)
-
-        const fileInfo = listFilesResponse.json<ListFilesResponseBody>()
-            .find(file => file.id === fileId);
-        expect(fileInfo).toBeDefined();
-
-        console.log(`fileInfo: ${JSON.stringify(fileInfo)}`)
-
-        // delete the uploaded file
-        const deleteFileResponse = await RequestExecutor.deleteProjectFile(app, projectId, fileId)
-        ResponseTestUtils.assertStatus200(deleteFileResponse)
-
-        // list again the uploaded files but now won't find the initial file
-        const secondListFilesResponse = await RequestExecutor.listProjectFiles(app, projectId)
-        ResponseTestUtils.assertStatus200(secondListFilesResponse)
-
-        expect(secondListFilesResponse.json<ListFilesResponseBody>().some(file => file.id === fileId))
-            .toBeFalsy();
-    }, 30000);
-
-
     afterAll(async () => {
         await RequestExecutor.deleteProject(app, projectId)
     })
+
+
+    test('CRUD workflow', async () => {
+        let fileId = ''
+        try {
+            // upload file
+            const form = new FormData()
+            form.append('search_file', Readable.from('test content'), { filename: TEST_FILE_NAME })
+
+            const uploadFileResponse = await RequestExecutor.uploadProjectFiles(app, projectId, form)
+            ResponseTestUtils.assertStatus201(uploadFileResponse)
+
+            fileId = uploadFileResponse.json<UploadFilesResponseBody>()[0].id
+            console.log(`fileId: ${fileId}`)
+
+            // list the uploaded files
+            const listFilesResponse = await RequestExecutor.listProjectFiles(app, projectId)
+            ResponseTestUtils.assertStatus200(listFilesResponse)
+
+            const fileInfo = listFilesResponse.json<ListFilesResponseBody>()
+                .find(file => file.id === fileId);
+            expect(fileInfo).toBeDefined();
+            expect(fileInfo?.filename).toBe(TEST_FILE_NAME)
+
+            console.log(`fileInfo: ${JSON.stringify(fileInfo)}`)
+        }
+        catch (err) {
+            if (fileId !== '') {
+                // delete the uploaded file
+                const deleteFileResponse = await RequestExecutor.deleteProjectFile(app, projectId, fileId)
+                ResponseTestUtils.assertStatus200(deleteFileResponse)
+
+                // list again the uploaded files but now won't find the initial file
+                const secondListFilesResponse = await RequestExecutor.listProjectFiles(app, projectId)
+                ResponseTestUtils.assertStatus200(secondListFilesResponse)
+
+                expect(secondListFilesResponse.json<ListFilesResponseBody>().some(file => file.id === fileId))
+                    .toBeFalsy();
+            }
+
+            throw err
+        }
+    }, 30000);
 });

@@ -1,14 +1,16 @@
-import fs from 'fs'
+import fs, { ReadStream } from 'fs'
 
 import { FastifyInstance, FastifyServerOptions } from "fastify";
 import { FromSchema } from 'json-schema-to-ts';
 
-import { SavedMultipartFile } from '@fastify/multipart';
 import { OpenAIService } from '../services/OpenAIService.js';
 import { ProjectsRepository } from '../repositories/ProjectsRepository.js';
 import { VectorStoreId } from '../types/openAI.js';
 import { ProjectNotFound } from '../exceptions/project-errors.js';
 import { ConversationNotFoundError } from '../exceptions/conversation-errors.js';
+import { FileUtils } from '../utils/file-utils.js';
+import { join } from 'path';
+import { pipeline } from 'stream/promises';
 
 
 export default function routes(fastify: FastifyInstance, _options: FastifyServerOptions) {
@@ -29,9 +31,19 @@ export default function routes(fastify: FastifyInstance, _options: FastifyServer
             }
         },
         async (request, reply) => {
-            const files = await request.saveRequestFiles()
+            const parts = request.files()
+            const fileStreams: ReadStream[] = []
 
-            const result = await uploadFiles(files, openAIService.sharedVectorStoreId, openAIService)
+            await using tmpDir = await FileUtils.mkdtempDisposable()
+
+            for await (const part of parts) {
+                const filePath = join(tmpDir.path, part.filename)
+                const savedFileStream = fs.createWriteStream(filePath)
+                await pipeline(part.file, savedFileStream)
+                fileStreams.push(fs.createReadStream(filePath))
+            }
+
+            const result = await uploadFiles(fileStreams, openAIService.sharedVectorStoreId, openAIService)
 
             reply.status(201).send(result)
         })
@@ -85,9 +97,19 @@ export default function routes(fastify: FastifyInstance, _options: FastifyServer
         },
         async (request, reply) => {
             const vectorStoreId = await getVectorStoreIdFromProjectId(request.params.projectId, projectsRepo)
-            const files = await request.saveRequestFiles()
+            const parts = request.files()
+            const fileStreams: ReadStream[] = []
 
-            const result = await uploadFiles(files, vectorStoreId, openAIService)
+            await using tmpDir = await FileUtils.mkdtempDisposable()
+
+            for await (const part of parts) {
+                const filePath = join(tmpDir.path, part.filename)
+                const savedFileStream = fs.createWriteStream(filePath)
+                await pipeline(part.file, savedFileStream)
+                fileStreams.push(fs.createReadStream(filePath))
+            }
+
+            const result = await uploadFiles(fileStreams, vectorStoreId, openAIService)
 
             reply.status(201).send(result)
         })
@@ -167,12 +189,12 @@ export type UploadFilesResponseBody = FromSchema<typeof uploadFilesResponseBodyS
  * @param reply 
  */
 async function uploadFiles(
-    files: SavedMultipartFile[],
+    fileStreams: ReadStream[],
     vectorStoreId: string,
     openAIService: OpenAIService
 ): Promise<UploadFilesResponseBody> {
-    const fileObjects = await Promise.all(files.map(async (f) => {
-        const fileObject = await openAIService.uploadFile(fs.createReadStream(f.filepath))
+    const fileObjects = await Promise.all(fileStreams.map(async (fStream) => {
+        const fileObject = await openAIService.uploadFile(fStream)
 
         await openAIService.attachFileToVectorStore(vectorStoreId, fileObject.id, true)
 
