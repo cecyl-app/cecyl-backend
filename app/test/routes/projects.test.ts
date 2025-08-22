@@ -61,8 +61,7 @@ describe('projects', () => {
         expect(projectInfo).toMatchObject({
             name: TEST_PROJECT_NAME,
             context: TEST_PROJECT_CONTEXT,
-            sections: [],
-            sectionIdsOrder: []
+            sections: []
         });
 
         // delete the project
@@ -105,8 +104,7 @@ describe('projects', () => {
         expect(projectNewInfo).toMatchObject({
             name: TEST_PROJECT_NAME + "-new",
             context: TEST_PROJECT_CONTEXT + "-new",
-            sections: [],
-            sectionIdsOrder: []
+            sections: []
         });
 
         // delete the project

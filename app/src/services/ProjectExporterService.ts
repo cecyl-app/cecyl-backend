@@ -1,7 +1,8 @@
 import * as mdToDocx from "@mohtasham/md-to-docx";
 
-import { ProjectSectionNotFound, ProjectSectionUncompleted } from "../exceptions/project-errors.js";
+import { ProjectSectionUncompleted } from "../exceptions/project-errors.js";
 import { Project } from "../types/mongo.js";
+import ProjectEntity from "../entities/ProjectEntity.js";
 
 
 export class ProjectExporterService {
@@ -28,19 +29,9 @@ export class ProjectExporterService {
      * @returns 
      */
     async exportProjectToMarkdown(projectId: string, project: Project): Promise<string> {
-        const sectionIdsOrder = project.sectionIdsOrder.map(id => id.toString())
-        const renderedSections = Array.from(project.sections).sort((sec1, sec2) => {
-            const sec1Pos = sectionIdsOrder.indexOf(sec1.id.toString())
-            const sec2Pos = sectionIdsOrder.indexOf(sec2.id.toString())
+        const projectEntity = new ProjectEntity(projectId, project)
 
-            if (sec1Pos === -1)
-                throw new ProjectSectionNotFound(projectId, sec1.id.toString())
-
-            if (sec2Pos === -1)
-                throw new ProjectSectionNotFound(projectId, sec2.id.toString())
-
-            return sec1Pos - sec2Pos;
-        }).map(sec => {
+        const renderedSections = projectEntity.sections.map(sec => {
             const sectionContent = sec.history.at(-1)
 
             if (sectionContent === undefined)
@@ -49,6 +40,6 @@ export class ProjectExporterService {
             return `\n##${sec.name}\n\n${sectionContent.content}\n`
         })
 
-        return Promise.resolve(`#${project.name}\n\n---\n${renderedSections.join('')}`)
+        return Promise.resolve(`#${projectEntity.name}\n\n---\n${renderedSections.join('')}`)
     }
 }

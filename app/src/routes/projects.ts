@@ -8,6 +8,7 @@ import constants from "../constants.js";
 import { ProjectNotFound } from "../exceptions/project-errors.js";
 import { ConversationNotFoundError } from "../exceptions/conversation-errors.js";
 import { OpenAIResponseError } from "../exceptions/openai-error.js";
+import ProjectEntity from "../entities/ProjectEntity.js";
 
 
 export default function routes(fastify: FastifyInstance, _options: FastifyServerOptions) {
@@ -258,12 +259,6 @@ const getProjectResponseBodySchema = {
     properties: {
         name: { type: 'string' },
         context: { type: 'string' },
-        sectionIdsOrder: {
-            type: 'array',
-            items: {
-                type: 'string',
-            }
-        },
         sections: {
             type: 'array',
             items: {
@@ -289,12 +284,12 @@ const getProjectResponseBodySchema = {
             }
         }
     },
-    required: ['name', 'context', 'sections', 'sectionIdsOrder'],
+    required: ['name', 'context', 'sections'],
 } as const;
 export type GetProjectResponseBody = FromSchema<typeof getProjectResponseBodySchema>;
 
 /**
- * Get the project info
+ * Get the project info, with sections ordered using sectionIdsOrder
  * @param projectId
  * @param projectsRepo
  * @returns the project info
@@ -308,15 +303,16 @@ async function getProject(
     if (project === null)
         return null
 
+    const projectEntity = new ProjectEntity(projectId, project)
+
     const result = {
-        name: project.name,
-        context: project.context,
-        sections: project.sections.map(s => ({
+        name: projectEntity.name,
+        context: projectEntity.context,
+        sections: projectEntity.sections.map(s => ({
             id: s.id.toString(),
             name: s.name,
             history: s.history
-        })),
-        sectionIdsOrder: project.sectionIdsOrder.map(sid => sid.toString())
+        }))
     }
 
     return result
