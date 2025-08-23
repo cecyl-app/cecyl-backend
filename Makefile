@@ -1,15 +1,22 @@
-SHELL=/bin/sh
+SHELL=/bin/bash
 APP_FOLDER := app
 IS_DEV ?=
 ADDITIONAL_COMPOSE_FILES := $(if ${IS_DEV}, -f docker-compose.devcontainer.yaml,)
 
 .PHONY: install build run test up down clean-data
 
-
+# executed every time devcontainer is started
 install:
-	cd ${APP_FOLDER} && npm i
+	cd ${APP_FOLDER} && npm install --include=dev
 
 
+# initialize the app with the session key
+init:
+	mkdir -p app-data
+	docker compose -f docker-compose.init.yaml run --rm --build create-session
+
+
+# DEV only
 build:
 	echo "Building..."
 	cd ${APP_FOLDER} && npm run build
@@ -17,15 +24,17 @@ build:
 	cd ${APP_FOLDER} && npx eslint src/ test/
 
 
+# DEV only
 run: build
 	cd ${APP_FOLDER} && npm start
 
 
+# DEV only
 JEST_REGEX ?= .*
 # Parameters: \
 # JEST_REGEX: regex to select the files to run. Default: .*
 test: build
-	cd ${APP_FOLDER} && npx jest --detectOpenHandles "${JEST_REGEX}"
+	NODE_ENV=test && cd ${APP_FOLDER} && npx jest --detectOpenHandles "${JEST_REGEX}"
 
 
 # Parameters: \
@@ -40,3 +49,4 @@ down:
 
 clean-data:
 	sudo rm -r db/data
+	sudo rm -r app-data

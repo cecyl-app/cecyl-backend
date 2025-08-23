@@ -7,9 +7,16 @@ Create a `envs` folder with the following file:
 - `app.env`
     ```properties
     OPENAI_API_KEY=secret-openai-api-key
-    DB_CONN_STRING=mongodb://mongouser:password@db:27017/cecyldb?authSource=admin
     OPENAI_MODEL=gpt-4o-mini
+
+    DB_CONN_STRING=mongodb://mongouser:password@db:27017/cecyldb?authSource=admin
+
+    GOOGLE_AUTH_CLIENT_ID=client-id-from-https://console.cloud.google.com/auth/clients
+    GOOGLE_AUTH_ALLOWED_EMAILS=name1@gmail.com,name2@gmail.com
     ```
+
+    **Note**: `GOOGLE_AUTH_ALLOWED_EMAILS` specifies the comma-separated emails that are allowed
+    to access the APIs
 - `db.env`
     ```properties
     MONGO_INITDB_ROOT_USERNAME=mongouser
@@ -28,6 +35,14 @@ ME_CONFIG_BASICAUTH=false
 ME_CONFIG_BASICAUTH_USERNAME=
 ME_CONFIG_BASICAUTH_ENABLED=false
 ```
+
+Next you need to create a session secret key, used to secure the session cookie created. Run:
+
+```bash
+make init
+```
+
+It should create a `.key` file in `./app-data/`.
 
 ## Run
 

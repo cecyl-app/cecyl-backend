@@ -1,0 +1,8 @@
+services:
+  create-session:
+    build:
+      context: .
+      target: builder
+    volumes:
+      - ./app-data:/var/lib/cecyl/data
+    command: ["bash", "-c", "npx @fastify/secure-session > /var/lib/cecyl/data/session-secret-key.key"]

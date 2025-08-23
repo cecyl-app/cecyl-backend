@@ -11,9 +11,13 @@ import { ConversationNotFoundError } from '../exceptions/conversation-errors.js'
 import { FileUtils } from '../utils/file-utils.js';
 import { join } from 'path';
 import { pipeline } from 'stream/promises';
+import { UnauthorizedUserError } from '../exceptions/auth-error.js';
+import addCheckUserIsLogged from '../middlewares/auth.js';
 
 
 export default function routes(fastify: FastifyInstance, _options: FastifyServerOptions) {
+    addCheckUserIsLogged(fastify)
+
     const projectsRepo = fastify.projectsRepo
     const openAIService = fastify.openAIService
 
@@ -156,6 +160,9 @@ export default function routes(fastify: FastifyInstance, _options: FastifyServer
 
         if ([ProjectNotFound, ConversationNotFoundError].some(etype => error instanceof etype))
             reply.status(404).send({ message: error.message })
+
+        if (error instanceof UnauthorizedUserError)
+            reply.status(403).send({ message: error.message })
     })
 }
 

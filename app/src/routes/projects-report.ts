@@ -4,9 +4,13 @@ import { FromSchema } from "json-schema-to-ts";
 import { ProjectsRepository } from "../repositories/ProjectsRepository.js";
 import { ProjectNotFound, ProjectSectionNotFound, ProjectSectionUncompleted } from "../exceptions/project-errors.js";
 import { ProjectExporterService } from "../services/ProjectExporterService.js";
+import addCheckUserIsLogged from "../middlewares/auth.js";
+import { UnauthorizedUserError } from "../exceptions/auth-error.js";
 
 
 export default function routes(fastify: FastifyInstance, _options: FastifyServerOptions) {
+    addCheckUserIsLogged(fastify)
+
     const projectsRepo = fastify.projectsRepo
     const projectExporterService = new ProjectExporterService()
 
@@ -37,6 +41,9 @@ export default function routes(fastify: FastifyInstance, _options: FastifyServer
 
         if (error instanceof ProjectSectionUncompleted)
             reply.status(409).send({ message: error.message })
+
+        if (error instanceof UnauthorizedUserError)
+            reply.status(403).send({ message: error.message })
     })
 }
 

@@ -6,13 +6,15 @@ services:
     ports:
       - "3000:80"
     env_file: envs/app.env
+    volumes:
+      - ./app-data:/var/lib/cecyl/data
   
   db:
     image: mongo:8.0
     restart: unless-stopped
-    # TODO: replace with secret
     ports:
       - "5000:27017"
+    # TODO: replace with secret
     env_file: envs/db.env
     volumes:
       - ./db/data:/data/db

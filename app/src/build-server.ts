@@ -1,10 +1,14 @@
+import { readFile } from 'node:fs/promises';
+
 import fastify, { FastifyInstance, FastifyServerOptions } from "fastify";
 import fastifyPlugin from "fastify-plugin";
 import OpenAI from "openai";
 import fastifyMultipart from "@fastify/multipart";
 import fastifyMongodb from "@fastify/mongodb";
 import cors from '@fastify/cors'
+import secureSession from '@fastify/secure-session'
 
+import authRoutes from './routes/auth.js'
 import filesRoutes from './routes/files.js'
 import projectsRoutes from './routes/projects.js'
 import projectSectionsRoutes from './routes/projects-sections.js'
@@ -12,6 +16,7 @@ import projectReportRoutes from './routes/projects-report.js'
 import { OpenAIService } from "./services/OpenAIService.js";
 import { ProjectsRepository } from "./repositories/ProjectsRepository.js";
 import { ConversationsRepository } from "./repositories/ConversationsRepository.js";
+import constants from "./constants.js";
 
 export default async function build(opts = {}) {
     const app = fastify(opts);
@@ -20,23 +25,33 @@ export default async function build(opts = {}) {
         origin: '*'
     })
 
-    app.register(fastifyMultipart)
-    app.register(fastifyMongodb, {
+    await app.register(secureSession, {
+        sessionName: 'session',
+        key: await readFile(constants.session.keyPath),
+        expiry: 24 * 60 * 60 * 7, // 7 days
+        cookie: {
+            path: '/',
+            httpOnly: true
+        }
+    })
+    await app.register(fastifyMultipart)
+    await app.register(fastifyMongodb, {
         forceClose: true,
         url: process.env.DB_CONN_STRING
     })
 
-    app.register(fastifyPlugin(projectsRepositoryDecorator,
+    await app.register(fastifyPlugin(projectsRepositoryDecorator,
         { name: 'projectsRepository', dependencies: ['@fastify/mongodb'] }))
-    app.register(fastifyPlugin(conversationsRepositoryDecorator,
+    await app.register(fastifyPlugin(conversationsRepositoryDecorator,
         { name: 'conversationsRepository', dependencies: ['@fastify/mongodb'] }))
-    app.register(fastifyPlugin(openAIServiceDecorator,
+    await app.register(fastifyPlugin(openAIServiceDecorator,
         { name: 'openAIService', dependencies: ['projectsRepository', 'conversationsRepository'] }))
 
-    app.register(filesRoutes)
-    app.register(projectsRoutes)
-    app.register(projectSectionsRoutes)
-    app.register(projectReportRoutes)
+    await app.register(authRoutes)
+    await app.register(filesRoutes)
+    await app.register(projectsRoutes)
+    await app.register(projectSectionsRoutes)
+    await app.register(projectReportRoutes)
 
     return app;
 }

@@ -1,16 +1,22 @@
 # syntax=docker/dockerfile:1
 
 ARG NODE_VERSION=22
-FROM node:${NODE_VERSION}-alpine AS base
+FROM node:${NODE_VERSION}-bookworm-slim AS base
 
 WORKDIR /usr/src/app
 
+ENV NODE_ENV=production
+
 ENV OPENAI_API_KEY=
+ENV OPENAI_MODEL=gpt-4o-mini
+
 ENV DB_CONN_STRING=mongodb://mongouser:password@db:27017/cecyldb?authSource=admin
 ENV MONGO_INITDB_ROOT_USERNAME=mongouser
 ENV MONGO_INITDB_ROOT_PASSWORD=password
 ENV MONGO_INITDB_DATABASE=cecyldb
-ENV OPENAI_MODEL=gpt-4o-mini
+
+ENV GOOGLE_AUTH_ALLOWED_EMAILS=
+ENV GOOGLE_AUTH_CLIENT_ID=
 
 EXPOSE 80
 
@@ -25,7 +31,7 @@ VOLUME ["/var/lib/cecyl/data"]
 
 FROM base AS devcontainer
 
-RUN apk add --no-cache make
+RUN apt update && apt install -y make
 
 USER node
 

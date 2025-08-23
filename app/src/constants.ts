@@ -121,5 +121,8 @@ export default {
             sectionPromptPrefix: SECTION_PROMPT_PREFIX,
             sectionImprovePrefix: SECTION_IMPROVE_PREFIX
         }
+    },
+    session: {
+        keyPath: '/var/lib/cecyl/data/session-secret-key.key'
     }
 }

@@ -9,3 +9,9 @@ declare module 'fastify' {
         openAIService: OpenAIService
     }
 }
+
+declare module '@fastify/secure-session' {
+    interface SessionData {
+        userId: string
+    }
+}

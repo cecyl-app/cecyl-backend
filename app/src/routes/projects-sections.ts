@@ -7,9 +7,13 @@ import constants from "../constants.js";
 import { ProjectNotFound, ProjectSectionNotFound } from "../exceptions/project-errors.js";
 import { ConversationNotFoundError } from "../exceptions/conversation-errors.js";
 import { OpenAIResponseError } from "../exceptions/openai-error.js";
+import addCheckUserIsLogged from "../middlewares/auth.js";
+import { UnauthorizedUserError } from "../exceptions/auth-error.js";
 
 
 export default function routes(fastify: FastifyInstance, _options: FastifyServerOptions) {
+    addCheckUserIsLogged(fastify)
+
     const projectsRepo = fastify.projectsRepo
     const openAIService = fastify.openAIService
 
@@ -124,6 +128,9 @@ export default function routes(fastify: FastifyInstance, _options: FastifyServer
 
         if (error instanceof OpenAIResponseError)
             reply.status(500).send({ message: error.message })
+
+        if (error instanceof UnauthorizedUserError)
+            reply.status(403).send({ message: error.message })
     })
 }
 
