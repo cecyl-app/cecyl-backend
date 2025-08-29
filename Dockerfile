@@ -61,6 +61,7 @@ RUN --mount=type=bind,source=app/package.json,target=/usr/src/app/package.json \
     --mount=type=cache,target=/root/.npm \
     npm ci --omit=dev
 
+RUN mkdir -p dist
 COPY --from=builder /usr/src/app/dist ./dist
 
 CMD ["npm", "run", "start"]
