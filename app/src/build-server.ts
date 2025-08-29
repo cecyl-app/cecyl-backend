@@ -22,7 +22,8 @@ export default async function build(opts = {}) {
     const app = fastify(opts);
 
     await app.register(cors, {
-        origin: '*'
+        origin: '*',
+        methods: ['GET', 'HEAD', 'POST', 'PUT', 'DELETE']
     })
 
     await app.register(secureSession, {
