@@ -2,6 +2,7 @@ SHELL=/bin/bash
 APP_FOLDER := app
 IS_DEV ?=
 ADDITIONAL_COMPOSE_FILES := $(if ${IS_DEV}, -f docker-compose.devcontainer.yaml,)
+APP_PORT ?= 3000
 
 .PHONY: install build run test up down clean-data
 
@@ -38,9 +39,10 @@ test: build
 
 
 # Parameters: \
-# IS_DEV: is deploy for dev? any non-empty string for "true", leave it blank or do not specify it for "false"
+# IS_DEV: is deploy for dev? any non-empty string for "true", leave it blank or do not specify it for "false" \
+# APP_PORT: the port for the webserver (default: 3000)
 up:
-	docker compose -f docker-compose.yaml ${ADDITIONAL_COMPOSE_FILES} up -d
+	APP_PORT=$(APP_PORT) docker compose -f docker-compose.yaml ${ADDITIONAL_COMPOSE_FILES} up -d --build
 
 
 down:

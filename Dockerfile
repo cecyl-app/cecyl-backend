@@ -48,7 +48,7 @@ RUN --mount=type=bind,source=app/package.json,target=/usr/src/app/package.json \
 
 COPY ./app ./
 
-CMD ["npm", "run", "build"]
+RUN npm run build
 
 # ******************************************
 
@@ -64,4 +64,4 @@ RUN --mount=type=bind,source=app/package.json,target=/usr/src/app/package.json \
 RUN mkdir -p dist
 COPY --from=builder /usr/src/app/dist ./dist
 
-CMD ["npm", "run", "start"]
+ENTRYPOINT ["node", "dist/index.js"]

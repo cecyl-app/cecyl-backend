@@ -1,3 +1,5 @@
 app/dist/
 app/node_modules/
 .devcontainer/
+app/tsconfig.compile.tsbuildinfo
+app/tsconfig.tsbuildinfo

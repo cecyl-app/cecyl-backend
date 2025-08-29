@@ -51,3 +51,9 @@ Run the server with:
 ```bash
 make up
 ```
+
+you can specify a custom port for the web server with `APP_PORT` (default: 3000):
+
+```bash
+make up APP_PORT=2345
+```
