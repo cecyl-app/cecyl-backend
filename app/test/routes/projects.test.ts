@@ -11,6 +11,7 @@ import { ConversationsTestUtils } from '../test-utils/ConversationsTestUtils.js'
  **/
 import * as extendedFastify from '../../src/types/index.js'
 import { ResponseTestUtils } from '../test-utils/ResponseTestUtils.js';
+import { CreateSectionResponseBody } from '../../src/routes/projects-sections.js';
 
 let app: FastifyInstance
 
@@ -76,7 +77,7 @@ describe('projects', () => {
         expect(projects.map(p => p.id)).not.toContain(projectId)
     }, 30000);
 
-    test('given a project, when updateProject is called, then Project fields are modified', async () => {
+    test('given a project, when updateProject is called with context and language, then those fields are modified', async () => {
         const TEST_PROJECT_NAME = 'my test project'
         const TEST_PROJECT_CONTEXT = 'my project context'
 
@@ -93,7 +94,6 @@ describe('projects', () => {
         const updateProjectResponse = await RequestExecutor.updateProjectInfo(app, projectId, {
             name: TEST_PROJECT_NAME + "-new",
             context: TEST_PROJECT_CONTEXT + "-new",
-            sectionIdsOrder: [],
             language: 'italian'
         })
         ResponseTestUtils.assertStatus200(updateProjectResponse)
@@ -105,6 +105,57 @@ describe('projects', () => {
             name: TEST_PROJECT_NAME + "-new",
             context: TEST_PROJECT_CONTEXT + "-new",
             sections: []
+        });
+
+        // delete the project
+        await RequestExecutor.deleteProject(app, projectId)
+    }, 30000);
+
+    test('given a project, when updateProject is called with sectionIdsOrder, then this field is modified', async () => {
+        const TEST_PROJECT_NAME = 'my test project'
+        const TEST_PROJECT_CONTEXT = 'my project context'
+
+        // create project
+        const createProjectResponse = await RequestExecutor.createProject(app, {
+            name: TEST_PROJECT_NAME,
+            context: TEST_PROJECT_CONTEXT,
+            language: 'english'
+        })
+
+        const projectId = createProjectResponse.json<CreateProjectResponseBody>().id
+
+        const createSection1Response = await RequestExecutor.createSection(app, projectId, {
+            name: "section1"
+        })
+        const section1Id = createSection1Response.json<CreateSectionResponseBody>().id
+
+        const createSection2Response = await RequestExecutor.createSection(app, projectId, {
+            name: "section2"
+        })
+        const section2Id = createSection2Response.json<CreateSectionResponseBody>().id
+
+        // update the project info
+        const updateProjectResponse = await RequestExecutor.updateProjectInfo(app, projectId, {
+            sectionIdsOrder: [section2Id, section1Id]
+        })
+        ResponseTestUtils.assertStatus200(updateProjectResponse)
+
+        // get the updated project info
+        const getProjectNewResponse = await RequestExecutor.getProjectInfo(app, projectId)
+        const projectNewInfo = getProjectNewResponse.json<GetProjectResponseBody>()
+        expect(projectNewInfo).toMatchObject({
+            sections: [
+                {
+                    id: section2Id,
+                    name: "section2",
+                    history: []
+                },
+                {
+                    id: section1Id,
+                    name: "section1",
+                    history: []
+                }
+            ]
         });
 
         // delete the project

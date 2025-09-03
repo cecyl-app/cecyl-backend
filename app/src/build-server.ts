@@ -23,7 +23,7 @@ export default async function build(opts = {}) {
 
     await app.register(cors, {
         origin: '*',
-        methods: ['GET', 'HEAD', 'POST', 'PUT', 'DELETE']
+        methods: ['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'PATCH']
     })
 
     await app.register(secureSession, {

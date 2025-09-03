@@ -32,7 +32,7 @@ export class RequestExecutor {
 
     static async updateProjectInfo(app: FastifyInstance, projectId: string, updateProjectInfo: UpdateProjectRequestBody) {
         return await app.inject({
-            method: 'PUT',
+            method: 'PATCH',
             url: `/projects/${projectId}`,
             body: updateProjectInfo
         });

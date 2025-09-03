@@ -11,6 +11,7 @@ import { OpenAIResponseError } from "../exceptions/openai-error.js";
 import ProjectEntity from "../entities/ProjectEntity.js";
 import addCheckUserIsLogged from "../middlewares/auth.js";
 import { UnauthorizedUserError } from "../exceptions/auth-error.js";
+import { InvalidInputError } from "../exceptions/generic-error.js";
 
 
 export default function routes(fastify: FastifyInstance, _options: FastifyServerOptions) {
@@ -38,7 +39,7 @@ export default function routes(fastify: FastifyInstance, _options: FastifyServer
         }
     )
 
-    fastify.put<{ Body: UpdateProjectRequestBody, Params: UpdateProjectRequestParams }>(
+    fastify.patch<{ Body: UpdateProjectRequestBody, Params: UpdateProjectRequestParams }>(
         '/projects/:projectId',
         {
             schema: {
@@ -48,6 +49,7 @@ export default function routes(fastify: FastifyInstance, _options: FastifyServer
         },
         async (request, reply) => {
             const updateProjectInfo = request.body
+
             await updateProject(request.params.projectId, updateProjectInfo, projectsRepo, openAIService)
 
             reply.status(200).send()
@@ -195,7 +197,11 @@ const updateProjectRequestBodySchema = {
         },
         language: { type: 'string' }
     },
-    required: ['name', 'context', 'sectionIdsOrder', 'language']
+    required: [],
+    // dependentRequired: {
+    //     context: ["language"],
+    //     language: ["context"]
+    // }
 } as const;
 export type UpdateProjectRequestBody = FromSchema<typeof updateProjectRequestBodySchema>;
 
@@ -212,6 +218,13 @@ async function updateProject(
     projectsRepo: ProjectsRepository,
     openAIService: OpenAIService
 ): Promise<void> {
+    if (
+        (projectUpdateInfo.context !== undefined && projectUpdateInfo.language === undefined) ||
+        (projectUpdateInfo.context === undefined && projectUpdateInfo.language !== undefined)
+    )
+        throw new InvalidInputError("context and language must be defined",
+            `context: ${projectUpdateInfo.context} - language: ${projectUpdateInfo.language}`)
+
     const project = await projectsRepo.getProject(projectId, ['context'])
     if (project == null)
         throw new ProjectNotFound(projectId)
@@ -221,7 +234,7 @@ async function updateProject(
     if (project.context !== projectUpdateInfo.context) {
         await openAIService.sendMessage(projectId, {
             model: process.env.OPENAI_MODEL ?? 'gpt-4o-mini',
-            userText: constants.ai.messages.projectContextPrefix(projectUpdateInfo.language) + projectUpdateInfo.context
+            userText: constants.ai.messages.projectContextPrefix(projectUpdateInfo.language!) + projectUpdateInfo.context
         })
     }
 }

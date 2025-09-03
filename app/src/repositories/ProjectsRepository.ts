@@ -13,7 +13,7 @@ type MongoClient = mongodb.MongoClient
 type ProjectFields = Parameters<typeof buildProjectionOption<Project>>[0]
 
 type ProjectInfo = Pick<Project, 'name' | 'context' | 'vectorStoreId'>
-type ProjectUpdateInfo = Pick<Project, 'name' | 'context'> & { sectionIdsOrder: string[] }
+type ProjectUpdateInfo = Partial<Pick<Project, 'name' | 'context'> & { sectionIdsOrder: string[] }>
 type SectionUpdateInfo = Pick<ProjectSection, 'name'>
 
 
@@ -41,14 +41,21 @@ export class ProjectsRepository {
 
 
     async updateProjectInfo(id: string, projectUpdateInfo: ProjectUpdateInfo): Promise<void> {
+        const updateMongoObject: Omit<ProjectUpdateInfo, 'sectionIdsOrder'> & { sectionIdsOrder?: ObjectId[] } = {}
+
+        if (projectUpdateInfo.name !== undefined)
+            updateMongoObject.name = projectUpdateInfo.name
+
+        if (projectUpdateInfo.context !== undefined)
+            updateMongoObject.context = projectUpdateInfo.context
+
+        if (projectUpdateInfo.sectionIdsOrder !== undefined)
+            updateMongoObject.sectionIdsOrder = projectUpdateInfo.sectionIdsOrder.map(sid => new ObjectId(sid))
+
         const result = await this.projects.updateOne(
             { _id: new ObjectId(id) },
             {
-                '$set': {
-                    name: projectUpdateInfo.name,
-                    context: projectUpdateInfo.context,
-                    sectionIdsOrder: projectUpdateInfo.sectionIdsOrder.map(sid => new ObjectId(sid))
-                }
+                '$set': updateMongoObject
             }
         )
 
