@@ -17,6 +17,7 @@ import { OpenAIService } from "./services/OpenAIService.js";
 import { ProjectsRepository } from "./repositories/ProjectsRepository.js";
 import { ConversationsRepository } from "./repositories/ConversationsRepository.js";
 import constants from "./constants.js";
+import { env } from './envs.js';
 
 export default async function build(opts = {}) {
     const app = fastify(opts);
@@ -38,7 +39,7 @@ export default async function build(opts = {}) {
     await app.register(fastifyMultipart)
     await app.register(fastifyMongodb, {
         forceClose: true,
-        url: process.env.DB_CONN_STRING
+        url: env.DB_CONN_STRING
     })
 
     await app.register(fastifyPlugin(projectsRepositoryDecorator,

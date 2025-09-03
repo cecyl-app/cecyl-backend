@@ -9,6 +9,7 @@ import { ConversationNotFoundError } from "../exceptions/conversation-errors.js"
 import { OpenAIResponseError } from "../exceptions/openai-error.js";
 import addCheckUserIsLogged from "../middlewares/auth.js";
 import { UnauthorizedUserError } from "../exceptions/auth-error.js";
+import { env } from "../envs.js";
 
 
 export default function routes(fastify: FastifyInstance, _options: FastifyServerOptions) {
@@ -253,7 +254,7 @@ async function sendPrompt(
     const response = await openAIService.sendMessage(
         promptInfo.projectId,
         {
-            model: process.env.OPENAI_MODEL ?? 'gpt-4o-mini',
+            model: env.OPENAI_MODEL,
             userText: constants.ai.messages.sectionPromptPrefix(promptInfo.sectionId) + promptInfo.prompt
         }
     )
@@ -314,7 +315,7 @@ async function sendImprove(
     await openAIService.sendMessage(
         improveInfo.projectId,
         {
-            model: process.env.OPENAI_MODEL ?? 'gpt-4o-mini',
+            model: env.OPENAI_MODEL,
             userText: constants.ai.messages.sectionImprovePrefix(improveInfo.sectionId) + improveInfo.prompt
         }
     )

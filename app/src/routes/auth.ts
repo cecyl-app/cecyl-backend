@@ -3,6 +3,7 @@ import { FromSchema } from "json-schema-to-ts";
 import { OAuth2Client } from "google-auth-library";
 
 import { InvalidAuthCredentialsError, UnauthorizedUserError } from "../exceptions/auth-error.js";
+import { env } from "../envs.js";
 
 
 export default function routes(fastify: FastifyInstance, _options: FastifyServerOptions) {
@@ -64,7 +65,7 @@ async function googleSignIn(
 
     const ticket = await client.verifyIdToken({
         idToken: idToken,
-        audience: process.env.GOOGLE_AUTH_CLIENT_ID
+        audience: env.GOOGLE_AUTH_CLIENT_ID
     });
     const payload = ticket.getPayload();
 
@@ -72,7 +73,7 @@ async function googleSignIn(
         throw new InvalidAuthCredentialsError("Google token id does not include the email, or it is not verified")
     }
 
-    if (!process.env.GOOGLE_AUTH_ALLOWED_EMAILS!.includes(payload.email)) {
+    if (!env.GOOGLE_AUTH_ALLOWED_EMAILS.includes(payload.email)) {
         throw new UnauthorizedUserError(payload.email)
     }
 

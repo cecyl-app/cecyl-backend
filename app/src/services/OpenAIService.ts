@@ -135,10 +135,15 @@ export class OpenAIService {
             throw new ProjectNotFound(projectId)
 
         // ******* tools
-        const tools: OpenAI.Responses.Tool[] = [{
-            type: 'file_search',
-            vector_store_ids: [project.vectorStoreId, this._sharedVectorStoreId]
-        }]
+        const tools: OpenAI.Responses.Tool[] = [
+            {
+                type: 'file_search',
+                vector_store_ids: [project.vectorStoreId, this._sharedVectorStoreId]
+            },
+            {
+                type: 'web_search'
+            },
+        ]
 
         // ******* input
         const input: OpenAI.Responses.ResponseInput = [{

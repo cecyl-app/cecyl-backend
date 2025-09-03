@@ -7,7 +7,7 @@ Create a `envs` folder with the following file:
 - `app.env`
     ```properties
     OPENAI_API_KEY=secret-openai-api-key
-    OPENAI_MODEL=gpt-4o-mini
+    OPENAI_MODEL=gpt-5
 
     DB_CONN_STRING=mongodb://mongouser:password@db:27017/cecyldb?authSource=admin
 

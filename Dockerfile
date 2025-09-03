@@ -8,7 +8,7 @@ WORKDIR /usr/src/app
 ENV NODE_ENV=production
 
 ENV OPENAI_API_KEY=
-ENV OPENAI_MODEL=gpt-4o-mini
+ENV OPENAI_MODEL=
 
 ENV DB_CONN_STRING=mongodb://mongouser:password@db:27017/cecyldb?authSource=admin
 ENV MONGO_INITDB_ROOT_USERNAME=mongouser

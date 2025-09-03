@@ -11,7 +11,8 @@ import { OpenAIResponseError } from "../exceptions/openai-error.js";
 import ProjectEntity from "../entities/ProjectEntity.js";
 import addCheckUserIsLogged from "../middlewares/auth.js";
 import { UnauthorizedUserError } from "../exceptions/auth-error.js";
-import { InvalidInputError } from "../exceptions/generic-error.js";
+import { InvalidInput } from "../exceptions/generic-error.js";
+import { env } from "../envs.js";
 
 
 export default function routes(fastify: FastifyInstance, _options: FastifyServerOptions) {
@@ -166,7 +167,7 @@ async function createProject(
 
     await conversationsRepo.createConversation(result.id, projectInfo.name)
     await openAIService.sendMessage(result.id, {
-        model: process.env.OPENAI_MODEL ?? 'gpt-4o-mini',
+        model: env.OPENAI_MODEL,
         userText: constants.ai.messages.projectContextPrefix(projectInfo.language) + projectInfo.context,
         systemText: constants.ai.messages.projectSystemText
     })
@@ -222,7 +223,7 @@ async function updateProject(
         (projectUpdateInfo.context !== undefined && projectUpdateInfo.language === undefined) ||
         (projectUpdateInfo.context === undefined && projectUpdateInfo.language !== undefined)
     )
-        throw new InvalidInputError("context and language must be defined",
+        throw new InvalidInput("context and language must be defined",
             `context: ${projectUpdateInfo.context} - language: ${projectUpdateInfo.language}`)
 
     const project = await projectsRepo.getProject(projectId, ['context'])
@@ -233,7 +234,7 @@ async function updateProject(
 
     if (project.context !== projectUpdateInfo.context) {
         await openAIService.sendMessage(projectId, {
-            model: process.env.OPENAI_MODEL ?? 'gpt-4o-mini',
+            model: env.OPENAI_MODEL,
             userText: constants.ai.messages.projectContextPrefix(projectUpdateInfo.language!) + projectUpdateInfo.context
         })
     }
