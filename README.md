@@ -1,5 +1,21 @@
 # Cecyl Backend
 
+## VM Config
+
+The VM can be configured using the `cloud-init.yaml` file. You can either copy in the cloud-init section during VM startup or execute it as follows:
+
+```bash
+mkdir .vm_init
+cd .vm_init
+touch 60-init-docker.yaml
+# then copy the content of cloud-init.yaml inside 60-init-docker.yaml
+cloud-init single --file ./60-init-docker.yaml --name cc_package_update_upgrade_install
+cloud-init single --file ./60-init-docker.yaml --name cc_runcmd
+bash -x /var/lib/cloud/instances/*/scripts/runcmd
+```
+
+---
+
 ## Requirements:
 
 Create a `envs` folder with the following file:
