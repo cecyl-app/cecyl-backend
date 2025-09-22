@@ -14,7 +14,8 @@ install:
 # initialize the app with the session key
 init:
 	mkdir -p app-data
-	test ! -d app-data -o ! -f app-data/session-secret-key.key && docker compose -f docker-compose.init.yaml run --rm --build create-session
+	test ! -f app-data/session-secret-key.key && docker compose -f docker-compose.init.yaml run --user=$$USER --rm --build create-session || \
+		echo "Application has already been configured"
 
 
 # DEV only

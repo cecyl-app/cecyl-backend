@@ -15,7 +15,7 @@ write_files:
   - content: |
       #!/bin/bash
       cd app
-      git pull origin main
+      git pull --rebase origin main
       
       make init
       make up
