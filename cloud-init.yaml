@@ -7,6 +7,7 @@ package_upgrade: true
 packages:
   - ca-certificates 
   - curl
+  - make
   - webhook
 
 write_files:
