@@ -13,6 +13,7 @@ import { join } from 'path';
 import { pipeline } from 'stream/promises';
 import { UnauthorizedUserError } from '../exceptions/auth-error.js';
 import addCheckUserIsLogged from '../middlewares/auth.js';
+import { ErrorUtils } from '../utils/error-utils.js';
 
 
 export default function routes(fastify: FastifyInstance, _options: FastifyServerOptions) {
@@ -158,11 +159,16 @@ export default function routes(fastify: FastifyInstance, _options: FastifyServer
     fastify.setErrorHandler(function (error, request, reply) {
         fastify.log.error(error)
 
-        if ([ProjectNotFound, ConversationNotFoundError].some(etype => error instanceof etype))
-            reply.status(404).send({ message: error.message })
+        const handleObj = ErrorUtils.getRouteErrorCode(error, new Map<new (...args) => Error, number>([
+            [ProjectNotFound, 404],
+            [ConversationNotFoundError, 404],
+            [UnauthorizedUserError, 403]
+        ]))
 
-        if (error instanceof UnauthorizedUserError)
-            reply.status(403).send({ message: error.message })
+        if (handleObj.canBeHandled)
+            reply.status(handleObj.statusCode).send({ message: error.message })
+        else
+            throw error
     })
 }
 

@@ -42,21 +42,21 @@ describe('projects', () => {
             context: TEST_PROJECT_CONTEXT,
             language: 'english'
         })
-        ResponseTestUtils.assertStatus201(createProjectResponse)
+        ResponseTestUtils.assertStatus(createProjectResponse, 201)
 
         const projectId = createProjectResponse.json<CreateProjectResponseBody>().id
         console.log(`projectId: ${projectId}`)
 
         // list projects
         const listProjectsResponse = await RequestExecutor.listProjects(app)
-        ResponseTestUtils.assertStatus200(listProjectsResponse)
+        ResponseTestUtils.assertStatus(listProjectsResponse, 200)
 
         let projects = listProjectsResponse.json<ListProjectsResponseBody>()
         expect(projects.map(p => p.id)).toContain(projectId)
 
         // get the project info
         const getProjectResponse = await RequestExecutor.getProjectInfo(app, projectId)
-        ResponseTestUtils.assertStatus200(getProjectResponse)
+        ResponseTestUtils.assertStatus(getProjectResponse, 200)
 
         const projectInfo = getProjectResponse.json<GetProjectResponseBody>()
         expect(projectInfo).toMatchObject({
@@ -67,11 +67,11 @@ describe('projects', () => {
 
         // delete the project
         const deleteProjectResponse = await RequestExecutor.deleteProject(app, projectId)
-        ResponseTestUtils.assertStatus200(deleteProjectResponse)
+        ResponseTestUtils.assertStatus(deleteProjectResponse, 200)
 
         // list projects after delete
         const listProjectsResponse2 = await RequestExecutor.listProjects(app)
-        ResponseTestUtils.assertStatus200(listProjectsResponse)
+        ResponseTestUtils.assertStatus(listProjectsResponse, 200)
 
         projects = listProjectsResponse2.json<ListProjectsResponseBody>()
         expect(projects.map(p => p.id)).not.toContain(projectId)
@@ -96,7 +96,7 @@ describe('projects', () => {
             context: TEST_PROJECT_CONTEXT + "-new",
             language: 'italian'
         })
-        ResponseTestUtils.assertStatus200(updateProjectResponse)
+        ResponseTestUtils.assertStatus(updateProjectResponse, 200)
 
         // get the updated project info
         const getProjectNewResponse = await RequestExecutor.getProjectInfo(app, projectId)
@@ -138,7 +138,7 @@ describe('projects', () => {
         const updateProjectResponse = await RequestExecutor.updateProjectInfo(app, projectId, {
             sectionIdsOrder: [section2Id, section1Id]
         })
-        ResponseTestUtils.assertStatus200(updateProjectResponse)
+        ResponseTestUtils.assertStatus(updateProjectResponse, 200)
 
         // get the updated project info
         const getProjectNewResponse = await RequestExecutor.getProjectInfo(app, projectId)
@@ -161,4 +161,11 @@ describe('projects', () => {
         // delete the project
         await RequestExecutor.deleteProject(app, projectId)
     }, 30000);
+
+    test('given a non-existing project, when getProject is called, then return 404', async () => {
+        // get the project info
+        const FAKE_PROJECT_ID = 'aaaaaaaaaaaaaaaaaaaaaaaa'
+        const updateProjectResponse = await RequestExecutor.getProjectInfo(app, FAKE_PROJECT_ID)
+        ResponseTestUtils.assertStatus(updateProjectResponse, 404)
+    });
 });

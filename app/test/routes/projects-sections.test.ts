@@ -57,7 +57,7 @@ describe('project sections', () => {
         const createSectionResponse = await RequestExecutor.createSection(app, projectId, {
             name: TEST_SECTION_NAME
         })
-        ResponseTestUtils.assertStatus201(createSectionResponse)
+        ResponseTestUtils.assertStatus(createSectionResponse, 201)
         const sectionId = createSectionResponse.json<CreateSectionResponseBody>().id
         expect(sectionId).toBeDefined()
 
@@ -75,7 +75,7 @@ describe('project sections', () => {
 
         // delete section
         const deleteSectionResponse = await RequestExecutor.deleteSection(app, projectId, sectionId)
-        ResponseTestUtils.assertStatus200(deleteSectionResponse)
+        ResponseTestUtils.assertStatus(deleteSectionResponse, 200)
 
         // get the project info
         const getProjectInfoResponse2 = await RequestExecutor.getProjectInfo(app, projectId)
@@ -107,7 +107,7 @@ describe('project sections', () => {
             const updateSectionResponse = await RequestExecutor.updateSection(app, projectId, sectionId, {
                 name: TEST_SECTION_NAME + "-new",
             })
-            ResponseTestUtils.assertStatus200(updateSectionResponse)
+            ResponseTestUtils.assertStatus(updateSectionResponse, 200)
 
             // get the project info
             const getProjectResponse = await RequestExecutor.getProjectInfo(app, projectId)
@@ -125,7 +125,7 @@ describe('project sections', () => {
                 prompt: PROMPT
             })
             const output = sendAskPromptResponse.json<SendSectionPromptResponseBody>().output
-            ResponseTestUtils.assertStatus200(sendAskPromptResponse)
+            ResponseTestUtils.assertStatus(sendAskPromptResponse, 200)
             expect(output.length).toBeGreaterThan(0)
 
             // get project info
@@ -152,7 +152,7 @@ describe('project sections', () => {
             const sendImprovePromptResponse = await RequestExecutor.sendImprovePrompt(app, projectId, sectionId, {
                 prompt: IMPROVE_PROMPT
             })
-            ResponseTestUtils.assertStatus200(sendImprovePromptResponse)
+            ResponseTestUtils.assertStatus(sendImprovePromptResponse, 200)
 
             // get project info
             const getProjectInfoResponse = await RequestExecutor.getProjectInfo(app, projectId)

@@ -43,14 +43,14 @@ describe('search-files - shared vector store', () => {
             form.append('search_file', Readable.from('test content'), { filename: TEST_FILE_NAME })
 
             const uploadFileResponse = await RequestExecutor.uploadSharedFiles(app, form)
-            ResponseTestUtils.assertStatus201(uploadFileResponse)
+            ResponseTestUtils.assertStatus(uploadFileResponse, 201)
 
             fileId = uploadFileResponse.json<UploadFilesResponseBody>()[0].id
             console.log(`fileId: ${fileId}`)
 
             // list the uploaded files
             const listFilesResponse = await RequestExecutor.listSharedFiles(app)
-            ResponseTestUtils.assertStatus200(listFilesResponse)
+            ResponseTestUtils.assertStatus(listFilesResponse, 200)
 
             const fileInfo = listFilesResponse.json<ListFilesResponseBody>()
                 .find(file => file.id === fileId);
@@ -63,11 +63,11 @@ describe('search-files - shared vector store', () => {
             if (fileId !== '') {
                 // delete the uploaded file
                 const deleteFileResponse = await RequestExecutor.deleteSharedFile(app, fileId)
-                ResponseTestUtils.assertStatus200(deleteFileResponse)
+                ResponseTestUtils.assertStatus(deleteFileResponse, 200)
 
                 // list again the uploaded files but now won't find the initial file
                 const secondListFilesResponse = await RequestExecutor.listSharedFiles(app)
-                ResponseTestUtils.assertStatus200(secondListFilesResponse)
+                ResponseTestUtils.assertStatus(secondListFilesResponse, 200)
 
                 expect(secondListFilesResponse.json<ListFilesResponseBody>().some(file => file.id === fileId))
                     .toBeFalsy();
@@ -106,14 +106,14 @@ describe('search-files - project vector store', () => {
             form.append('search_file', Readable.from('test content'), { filename: TEST_FILE_NAME })
 
             const uploadFileResponse = await RequestExecutor.uploadProjectFiles(app, projectId, form)
-            ResponseTestUtils.assertStatus201(uploadFileResponse)
+            ResponseTestUtils.assertStatus(uploadFileResponse, 201)
 
             fileId = uploadFileResponse.json<UploadFilesResponseBody>()[0].id
             console.log(`fileId: ${fileId}`)
 
             // list the uploaded files
             const listFilesResponse = await RequestExecutor.listProjectFiles(app, projectId)
-            ResponseTestUtils.assertStatus200(listFilesResponse)
+            ResponseTestUtils.assertStatus(listFilesResponse, 200)
 
             const fileInfo = listFilesResponse.json<ListFilesResponseBody>()
                 .find(file => file.id === fileId);
@@ -126,11 +126,11 @@ describe('search-files - project vector store', () => {
             if (fileId !== '') {
                 // delete the uploaded file
                 const deleteFileResponse = await RequestExecutor.deleteProjectFile(app, projectId, fileId)
-                ResponseTestUtils.assertStatus200(deleteFileResponse)
+                ResponseTestUtils.assertStatus(deleteFileResponse, 200)
 
                 // list again the uploaded files but now won't find the initial file
                 const secondListFilesResponse = await RequestExecutor.listProjectFiles(app, projectId)
-                ResponseTestUtils.assertStatus200(secondListFilesResponse)
+                ResponseTestUtils.assertStatus(secondListFilesResponse, 200)
 
                 expect(secondListFilesResponse.json<ListFilesResponseBody>().some(file => file.id === fileId))
                     .toBeFalsy();

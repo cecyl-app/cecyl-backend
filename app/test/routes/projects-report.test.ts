@@ -58,7 +58,7 @@ describe('project report', () => {
 
         // generate report
         const generateDocxResponse = await RequestExecutor.generateDocx(app, projectId)
-        ResponseTestUtils.assertStatus200(generateDocxResponse)
+        ResponseTestUtils.assertStatus(generateDocxResponse, 200)
         const docxBuffer = Buffer.from(generateDocxResponse.body);
         expect(docxBuffer.byteLength).toBeGreaterThan(100)
 

@@ -4,6 +4,7 @@ import { OAuth2Client } from "google-auth-library";
 
 import { InvalidAuthCredentialsError, UnauthorizedUserError } from "../exceptions/auth-error.js";
 import { env } from "../envs.js";
+import { ErrorUtils } from "../utils/error-utils.js";
 
 
 export default function routes(fastify: FastifyInstance, _options: FastifyServerOptions) {
@@ -34,11 +35,15 @@ export default function routes(fastify: FastifyInstance, _options: FastifyServer
     fastify.setErrorHandler(function (error, request, reply) {
         fastify.log.error(error)
 
-        if (error instanceof InvalidAuthCredentialsError)
-            reply.status(401).send({ message: error.message })
+        const handleObj = ErrorUtils.getRouteErrorCode(error, new Map<new (...args) => Error, number>([
+            [InvalidAuthCredentialsError, 401],
+            [UnauthorizedUserError, 403]
+        ]))
 
-        if (error instanceof UnauthorizedUserError)
-            reply.status(403).send({ message: error.message })
+        if (handleObj.canBeHandled)
+            reply.status(handleObj.statusCode).send({ message: error.message })
+        else
+            throw error
     })
 }
 

@@ -6,6 +6,7 @@ import { ProjectNotFound, ProjectSectionNotFound, ProjectSectionUncompleted } fr
 import { ProjectExporterService } from "../services/ProjectExporterService.js";
 import addCheckUserIsLogged from "../middlewares/auth.js";
 import { UnauthorizedUserError } from "../exceptions/auth-error.js";
+import { ErrorUtils } from "../utils/error-utils.js";
 
 
 export default function routes(fastify: FastifyInstance, _options: FastifyServerOptions) {
@@ -36,14 +37,17 @@ export default function routes(fastify: FastifyInstance, _options: FastifyServer
     fastify.setErrorHandler(function (error, request, reply) {
         fastify.log.error(error)
 
-        if ([ProjectNotFound, ProjectSectionNotFound].some(etype => error instanceof etype))
-            reply.status(404).send({ message: error.message })
+        const handleObj = ErrorUtils.getRouteErrorCode(error, new Map<new (...args) => Error, number>([
+            [ProjectNotFound, 404],
+            [ProjectSectionNotFound, 404],
+            [ProjectSectionUncompleted, 409],
+            [UnauthorizedUserError, 403]
+        ]))
 
-        if (error instanceof ProjectSectionUncompleted)
-            reply.status(409).send({ message: error.message })
-
-        if (error instanceof UnauthorizedUserError)
-            reply.status(403).send({ message: error.message })
+        if (handleObj.canBeHandled)
+            reply.status(handleObj.statusCode).send({ message: error.message })
+        else
+            throw error
     })
 }
 
