@@ -2,17 +2,30 @@
 
 ## VM Config
 
-The VM can be configured using the `cloud-init.yaml` file. You can either copy in the cloud-init section during VM startup or execute it as follows:
+The VM can be configured using the `cloud-init.yaml` file. You can either copy in the cloud-init section during VM startup or execute it as script, as follows:
+
+**Important:** Replace the `{{REPLACE_WITH_SECRET}}` placeholder with the same secret used for `DEPLOY_WEBHOOK_SECRET`.
 
 ```bash
 mkdir .vm_init
 cd .vm_init
-touch 60-init-docker.yaml
-# then copy the content of cloud-init.yaml inside 60-init-docker.yaml
-cloud-init single --file ./60-init-docker.yaml --name cc_package_update_upgrade_install
-cloud-init single --file ./60-init-docker.yaml --name cc_runcmd
+touch 60-init.yaml
+# then copy the content of cloud-init.yaml inside 60-init.yaml
+cloud-init clean
+cloud-init single --file ./60-init.yaml --name cc_package_update_upgrade_install
+cloud-init single --file ./60-init.yaml --name cc_write_files
+cloud-init single --file ./60-init.yaml --name cc_runcmd
 bash -x /var/lib/cloud/instances/*/scripts/runcmd
 ```
+
+---
+
+## Github Action Config
+
+The configured Github Action requires the following repository secrets:
+
+- `DEPLOY_WEBHOOK_URL`: url of the webhook for the deployment. Set it to: `http://{{yourserver}}:9000/hooks/deploy`, where `{{yourserver}}` refers to the ip/domain of your server.
+- `DEPLOY_WEBHOOK_SECRET`: secret that must match the one used by the webhook server
 
 ---
 
@@ -59,6 +72,8 @@ make init
 ```
 
 It should create a `.key` file in `./app-data/`.
+
+---
 
 ## Run
 

@@ -7,7 +7,35 @@ package_upgrade: true
 packages:
   - ca-certificates 
   - curl
+  - webhook
 
+write_files:
+  # deploy script
+  - content: |
+      #!/bin/bash
+      cd app
+      git pull origin main
+      
+      make init
+      make up
+    path: /root/deploy.sh
+    permissions: '0774'
+  # hooks for webhook
+  - content: |
+      - id: deploy
+        execute-command: /root/deploy.sh
+        command-working-directory: /root
+        trigger-rule:
+          match:
+            type: payload-hmac-sha1
+            secret: {{REPLACE_WITH_SECRET}}
+            parameter:
+              source: header
+              name: X-Hub-Signature
+    path: /root/hooks.yaml
+
+
+# install docker
 runcmd:
   - install -m 0755 -d /etc/apt/keyrings
   - curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
@@ -21,3 +49,7 @@ runcmd:
   - apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
   - systemctl enable docker
   - systemctl start docker
+  # clone repo
+  - test -d /root/app || git clone https://github.com/cecyl-app/cecyl-backend.git /root/app
+  # start webhook
+  - nohup webhook -hooks /root/hooks.yaml -verbose -port 9000 -http-methods "POST,GET" >/var/log/webhook.log 2>&1 &

@@ -14,7 +14,10 @@ install:
 # initialize the app with the session key
 init:
 	mkdir -p app-data
-	docker compose -f docker-compose.init.yaml run --rm --build create-session
+	if [[ ! -d app-data || ! -f app-data/session-secret-key.key ]]
+	then
+		docker compose -f docker-compose.init.yaml run --rm --build create-session
+	fi
 
 
 # DEV only
