@@ -2,21 +2,31 @@
 
 ## VM Config
 
-The VM can be configured using the `cloud-init.yaml` file. You can either copy in the cloud-init section during VM startup or execute it as script, as follows:
+The VM can be configured using the `cloud-init.yaml` file. You can install it in one of the following ways:
 
-**Important:** Replace the `{{REPLACE_WITH_SECRET}}` placeholder with the same secret used for `DEPLOY_WEBHOOK_SECRET`.
-
-```bash
-mkdir .vm_init
-cd .vm_init
-touch 60-init.yaml
-# then copy the content of cloud-init.yaml inside 60-init.yaml
-cloud-init clean
-cloud-init single --file ./60-init.yaml --name cc_package_update_upgrade_install
-cloud-init single --file ./60-init.yaml --name cc_write_files
-cloud-init single --file ./60-init.yaml --name cc_runcmd
-bash -x /var/lib/cloud/instances/*/scripts/runcmd
-```
+- Copy in the cloud-init section during VM startup, but remember to replace the `{{WEBHOOK_SECRET}}` placeholder with the same secret `DEPLOY_WEBHOOK_SECRET` used in the Github Action. OR
+- Execute it after the VM is already up and running.
+    1. Run
+        ```bash
+        mkdir .vm_init
+        cd .vm_init
+        touch 60-init.yaml
+        ```
+        and copy the content of `cloud-init.yaml` inside `60-init.yaml`.
+    1. Create a file called `webhook.secret` containing the secret `DEPLOY_WEBHOOK_SECRET` used in the Github Action.
+    1. Run
+        ```bash
+        sed -i "s/{{WEBHOOK_SECRET}}/$(cat webhook.secret)/" 60-init.yaml
+        ```
+        To replace the webhook secret placeholder with the actual value
+    1. Run
+        ```bash
+        cloud-init clean
+        cloud-init single --file ./60-init.yaml --name cc_package_update_upgrade_install
+        cloud-init single --file ./60-init.yaml --name cc_write_files
+        cloud-init single --file ./60-init.yaml --name cc_runcmd
+        bash -x /var/lib/cloud/instances/*/scripts/runcmd
+        ```
 
 ---
 

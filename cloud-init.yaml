@@ -8,6 +8,9 @@ packages:
   - ca-certificates 
   - curl
   - make
+  # --- BEGIN - deps of mkcert ---
+  - libnss3-tools
+  # --- END - deps of mkcert ---
   - webhook
 
 write_files:
@@ -29,15 +32,15 @@ write_files:
         trigger-rule:
           match:
             type: payload-hmac-sha1
-            secret: {{REPLACE_WITH_SECRET}}
+            secret: {{WEBHOOK_SECRET}}
             parameter:
               source: header
               name: X-Hub-Signature
     path: /root/hooks.yaml
 
-
-# install docker
 runcmd:
+  - mkdir -p /root/.vm_init
+  # install docker
   - install -m 0755 -d /etc/apt/keyrings
   - curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
   - chmod a+r /etc/apt/keyrings/docker.asc
@@ -50,7 +53,16 @@ runcmd:
   - apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
   - systemctl enable docker
   - systemctl start docker
+  # install mkcert
+  - |
+    curl -JLO "https://dl.filippo.io/mkcert/latest?for=linux/amd64"
+    chmod +x mkcert-v*-linux-amd64
+    mv mkcert-v*-linux-amd64 /usr/local/bin/mkcert
+    mkcert -install
+    IP_ADDRESS="$(ip addr show eth0 | grep "inet\b" | awk '{print $2}' | cut -d/ -f1)"
+    mkcert -key-file "/root/.vm_init/${IP_ADDRESS}-key.pem" -cert-file /root/.vm_init/${IP_ADDRESS}.pem \
+      "$IP_ADDRESS"
   # clone repo
   - test -d /root/app || git clone https://github.com/cecyl-app/cecyl-backend.git /root/app
   # start webhook
-  - nohup webhook -hooks /root/hooks.yaml -verbose -port 9000 -http-methods "POST,GET" >/var/log/webhook.log 2>&1 &
+  - pgrep webhook || { nohup webhook -hooks /root/hooks.yaml -verbose -port 9000 -http-methods "POST,GET" >/var/log/webhook.log 2>&1 & }

@@ -4,7 +4,7 @@ IS_DEV ?=
 ADDITIONAL_COMPOSE_FILES := $(if ${IS_DEV}, -f docker-compose.devcontainer.yaml,)
 APP_PORT ?= 3000
 
-.PHONY: install build run test up down clean-data
+.PHONY: install build run-dev test up down clean-data
 
 # executed every time devcontainer is started
 install:
@@ -16,6 +16,7 @@ init:
 	mkdir -p app-data
 	test ! -f app-data/session-secret-key.key && docker compose -f docker-compose.init.yaml run --user=$$USER --rm --build create-session || \
 		echo "Application has already been configured"
+	docker network inspect cecyl_network &> /dev/null || docker network create cecyl_network
 
 
 # DEV only
@@ -27,8 +28,8 @@ build:
 
 
 # DEV only
-run: build
-	cd ${APP_FOLDER} && npm start
+run-dev: build
+	cd ${APP_FOLDER} && NODE_ENV=test npm start
 
 
 # DEV only

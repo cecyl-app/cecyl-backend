@@ -3,3 +3,5 @@ app/node_modules/
 .devcontainer/
 app/tsconfig.compile.tsbuildinfo
 app/tsconfig.tsbuildinfo
+cloud-init.yaml
+README.md
