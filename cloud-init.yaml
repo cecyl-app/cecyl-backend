@@ -64,7 +64,9 @@ runcmd:
     mkcert -install
     IP_ADDRESS="$(ip addr show eth0 | grep "inet\b" | awk '{print $2}' | cut -d/ -f1)"
     mkdir -p /root/app/https-certs
-    mkcert -key-file "/root/app/https-certs/cecyl.key" -cert-file "/root/app/https-certs/cecyl.crt" \
-      "$IP_ADDRESS"
+    test -f /root/app/https-certs/cecyl.key || \
+      mkcert -key-file "/root/app/https-certs/cecyl.key" \
+        -cert-file "/root/app/https-certs/cecyl.crt" \
+        "$IP_ADDRESS"
   # start webhook
   - pgrep webhook || { nohup webhook -hooks /root/hooks.yaml -verbose -port 9000 -http-methods "POST,GET" >/var/log/webhook.log 2>&1 & }

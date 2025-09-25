@@ -5,6 +5,8 @@ ifeq ($(origin ENV), undefined)
   	ADDITIONAL_COMPOSE_FILES := -f docker-compose.prod.yaml
 else ifeq ($(ENV), prod)
 	ADDITIONAL_COMPOSE_FILES := -f docker-compose.prod.yaml
+else ifeq ($(ENV), prod-debug)
+	ADDITIONAL_COMPOSE_FILES := -f docker-compose.prod.yaml -f docker-compose.prod-debug.yaml
 else ifeq ($(ENV), dev)
 	ADDITIONAL_COMPOSE_FILES := -f docker-compose.devcontainer.yaml
 else ifeq ($(ENV), local)

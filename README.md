@@ -98,7 +98,13 @@ you can specify the following variables:
     ```bash
     make up APP_PORT=2345
     ```
-- The environment where it is deployed. The supported values are `prod`, `local`, `dev`. (default: `prod`)
+- The environment where it is deployed. The supported values are:
+    - `prod`: the production deployment which includes the application, the db, and traefik for https
+    - `prod-debug`: same as `prod`, but includes the traefik dashboard
+    - `local`: same as `prod`, without traefik (only http is allowed)
+    - `dev`: the development environment, which includes the app, the db and its db viewer.
+    
+    default: `prod`
     ```bash
     make up ENV=dev
     ```
