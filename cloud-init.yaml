@@ -39,7 +39,6 @@ write_files:
     path: /root/hooks.yaml
 
 runcmd:
-  - mkdir -p /root/.vm_init
   # install docker
   - install -m 0755 -d /etc/apt/keyrings
   - curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
@@ -53,6 +52,10 @@ runcmd:
   - apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
   - systemctl enable docker
   - systemctl start docker
+  # app folders
+  - mkdir -p /root/.vm_init
+  # clone repo
+  - test -d /root/app || git clone https://github.com/cecyl-app/cecyl-backend.git /root/app
   # install mkcert
   - |
     curl -JLO "https://dl.filippo.io/mkcert/latest?for=linux/amd64"
@@ -60,9 +63,8 @@ runcmd:
     mv mkcert-v*-linux-amd64 /usr/local/bin/mkcert
     mkcert -install
     IP_ADDRESS="$(ip addr show eth0 | grep "inet\b" | awk '{print $2}' | cut -d/ -f1)"
-    mkcert -key-file "/root/.vm_init/${IP_ADDRESS}-key.pem" -cert-file /root/.vm_init/${IP_ADDRESS}.pem \
+    mkdir -p /root/app/https-certs
+    mkcert -key-file "/root/app/https-certs/cecyl.key" -cert-file "/root/app/https-certs/cecyl.crt" \
       "$IP_ADDRESS"
-  # clone repo
-  - test -d /root/app || git clone https://github.com/cecyl-app/cecyl-backend.git /root/app
   # start webhook
   - pgrep webhook || { nohup webhook -hooks /root/hooks.yaml -verbose -port 9000 -http-methods "POST,GET" >/var/log/webhook.log 2>&1 & }

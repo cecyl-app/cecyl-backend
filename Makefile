@@ -1,8 +1,16 @@
 SHELL=/bin/bash
 APP_FOLDER := app
-IS_DEV ?=
-ADDITIONAL_COMPOSE_FILES := $(if ${IS_DEV}, -f docker-compose.devcontainer.yaml,)
 APP_PORT ?= 3000
+ifeq ($(origin ENV), undefined)
+  	ADDITIONAL_COMPOSE_FILES := -f docker-compose.prod.yaml
+else ifeq ($(ENV), prod)
+	ADDITIONAL_COMPOSE_FILES := -f docker-compose.prod.yaml
+else ifeq ($(ENV), dev)
+	ADDITIONAL_COMPOSE_FILES := -f docker-compose.devcontainer.yaml
+else ifeq ($(ENV), local)
+	ADDITIONAL_COMPOSE_FILES :=
+endif
+
 
 .PHONY: install build run-dev test up down clean-data
 
@@ -16,7 +24,6 @@ init:
 	mkdir -p app-data
 	test ! -f app-data/session-secret-key.key && docker compose -f docker-compose.init.yaml run --user=$$USER --rm --build create-session || \
 		echo "Application has already been configured"
-	docker network inspect cecyl_network &> /dev/null || docker network create cecyl_network
 
 
 # DEV only
@@ -41,12 +48,14 @@ test: build
 
 
 # Parameters: \
-# IS_DEV: is deploy for dev? any non-empty string for "true", leave it blank or do not specify it for "false" \
+# ENV: specifies the environment where it has been deployed (dev|prod|local). Default: prod
 # APP_PORT: the port for the webserver (default: 3000)
 up:
 	APP_PORT=$(APP_PORT) docker compose -f docker-compose.yaml ${ADDITIONAL_COMPOSE_FILES} up -d --build
 
 
+# Parameters: \
+# ENV: specifies the environment where it has been deployed (dev|prod|local). Default: prod
 down:
 	docker compose -f docker-compose.yaml ${ADDITIONAL_COMPOSE_FILES} down -v
 

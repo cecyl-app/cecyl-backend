@@ -1,0 +1,4 @@
+tls:
+  certificates:
+    - certFile: /certs/cecyl.crt
+      keyFile: /certs/cecyl.key
