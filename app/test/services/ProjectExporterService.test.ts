@@ -57,10 +57,10 @@ describe('project exporter service', () => {
         const markdown = await projectExporterService.exportProjectToMarkdown("projectId1", project)
 
         expect(markdown).toBe(
-            `#${project.name}\n\n---\n` +
-            `\n##${project.sections[1].name}\n\n${project.sections[1].history[0].content}\n` +
-            `\n##${project.sections[2].name}\n\n${project.sections[2].history[0].content}\n` +
-            `\n##${project.sections[0].name}\n\n${project.sections[0].history[1].content}\n`
+            `# ${project.name}\n\n---\n` +
+            `\n## ${project.sections[1].name}\n\n${project.sections[1].history[0].content}\n` +
+            `\n## ${project.sections[2].name}\n\n${project.sections[2].history[0].content}\n` +
+            `\n## ${project.sections[0].name}\n\n${project.sections[0].history[1].content}\n`
         )
     });
 });

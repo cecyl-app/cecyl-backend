@@ -37,9 +37,9 @@ export class ProjectExporterService {
             if (sectionContent === undefined)
                 throw new ProjectSectionUncompleted(projectId, sec.id.toString())
 
-            return `\n##${sec.name}\n\n${sectionContent.content}\n`
+            return `\n## ${sec.name}\n\n${sectionContent.content}\n`
         })
 
-        return Promise.resolve(`#${projectEntity.name}\n\n---\n${renderedSections.join('')}`)
+        return Promise.resolve(`# ${projectEntity.name}\n\n---\n${renderedSections.join('')}`)
     }
 }
