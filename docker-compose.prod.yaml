@@ -15,6 +15,6 @@ services:
   app:
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.app.rule=Host(`app.docker.localhost`)"
+      - "traefik.http.routers.app.rule=Host(`api.cecyl.it`)"
       - "traefik.http.routers.app.entrypoints=websecure"
       - "traefik.http.routers.app.tls=true"
