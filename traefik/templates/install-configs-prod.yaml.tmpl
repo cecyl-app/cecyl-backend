@@ -12,11 +12,17 @@ entryPoints:
     http:
       tls: true
 
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: ${TLS_ACME_EMAIL}
+      storage: /letsencrypt/acme.json
+      httpChallenge:
+        entryPoint: web
+
 providers:
   docker:
     exposedbydefault: false
-  file:
-    filename: "/dynamic-configs.yaml"
 
 log:
   level: INFO

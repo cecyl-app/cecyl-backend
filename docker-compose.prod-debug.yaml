@@ -2,5 +2,3 @@ services:
   traefik:
     ports:
       - "8080:8080"
-    volumes:
-      - ./traefik/install-configs-debug.yaml:/etc/traefik/traefik.yaml:ro

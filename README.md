@@ -75,14 +75,6 @@ ME_CONFIG_BASICAUTH_USERNAME=
 ME_CONFIG_BASICAUTH_ENABLED=false
 ```
 
-Next you need to create a session secret key, used to secure the session cookie created. Run:
-
-```bash
-make init
-```
-
-It should create a `.key` file in `./app-data/`.
-
 ---
 
 ## Run
@@ -93,19 +85,25 @@ Run the server with:
 make up
 ```
 
-you can specify the following variables:
-- A custom port for the web server with `APP_PORT` (default: 3000):
-    ```bash
-    make up APP_PORT=2345
-    ```
-- The environment where it is deployed. The supported values are:
-    - `prod`: the production deployment which includes the application, the db, and traefik for https
-    - `prod-debug`: same as `prod`, but includes the traefik dashboard
-    - `local`: same as `prod`, without traefik (only http is allowed)
-    - `dev`: the development environment, which includes the app, the db and its db viewer.
+It initially verifies that a session secret key (used to secure the session cookie) exists. If not, it automatically creates a `.key` file in `./app-data/`.
+
+Then, the compose is launched. you can include additional services/configurations using the `ENV` variable, which specifies the deployment environment. Each environment may require a list of deploy variables. The supported values of `ENV` are:
+- `prod`: the production deployment which includes the application, the db, and traefik for http.
+    Deploy variables:
+    - `APP_DOMAIN` (Required): the application DNS domain (used by traefik for the https certificate)
+    - `TLS_ACME_EMAIL` (Required): the email used by the ACME client for the certificate issuance protocol
+- `prod-debug`: same as `prod`, but includes the traefik dashboard. Deploy variables are the same as well.
+- `local`: includes the application and the db
+- `dev`: the development environment, which includes the app, the db and its db viewer.
     
-    default: `prod`
-    ```bash
-    make up ENV=dev
-    ```
-    The environment determines the configuration for each service or additional services (like `mongo-express` for `dev`, or `traefik` for `prod`)
+Default: `prod`
+
+```bash
+make up ENV=dev
+```
+
+The environment determines the configuration for each service or additional services (like `mongo-express` for `dev`, or `traefik` for `prod`). Besides, you can customize the deploy variables by creating a file in `deploy-vars/${ENV}.env`. Suppose, you want to deploy in production (`prod`):
+
+- Create `deploy-vars/prod.env` with the required deploy vars
+- Ensure the traefik template exists. In this case `traefik/templates/install-configs-prod.yaml.tmpl`
+- run `make up ENV=prod`

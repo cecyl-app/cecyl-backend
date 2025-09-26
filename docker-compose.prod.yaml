@@ -8,13 +8,14 @@ services:
       - "443:443"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./https-certs:/certs:ro
-      - ./traefik/dynamic-configs.yaml:/dynamic-configs.yaml:ro
-      - ./traefik/install-configs.yaml:/etc/traefik/traefik.yaml:ro
+      - ./traefik/generated-files/install-configs.yaml:/etc/traefik/traefik.yaml:ro
+      - ./letsencrypt:/letsencrypt
 
   app:
+    ports: !reset []
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.app.rule=Host(`api.cecyl.it`)"
+      - "traefik.http.routers.app.rule=Host(`${APP_DOMAIN}`)"
       - "traefik.http.routers.app.entrypoints=websecure"
       - "traefik.http.routers.app.tls=true"
+      - "traefik.http.routers.app.tls.certresolver=letsencrypt"
