@@ -34,7 +34,8 @@ export default async function build(opts = {}) {
         expiry: 24 * 60 * 60 * 7, // 7 days
         cookie: {
             path: '/',
-            httpOnly: true
+            httpOnly: true,
+            sameSite: 'none'
         }
     })
     await app.register(fastifyMultipart)
