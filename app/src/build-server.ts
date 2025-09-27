@@ -24,6 +24,7 @@ export default async function build(opts = {}) {
 
     await app.register(cors, {
         origin: env.WEBAPP_DOMAIN,
+        credentials: true,
         methods: ['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'PATCH']
     })
 
