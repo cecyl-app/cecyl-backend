@@ -35,7 +35,8 @@ export default async function build(opts = {}) {
         cookie: {
             path: '/',
             httpOnly: true,
-            sameSite: 'none'
+            sameSite: env.SESSION_COOKIE_SAME_SITE,
+            secure: env.SESSION_COOKIE_SECURE
         }
     })
     await app.register(fastifyMultipart)
