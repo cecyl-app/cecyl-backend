@@ -40,6 +40,7 @@ traefik/generated-files/install-configs.yaml
 ifdef TRAEFIK_CONFIG_TEMPLATE_PATH
 	mkdir -p traefik/generated-files
 	$(if $(strip $(SOURCED_FILE)),set -a && source $(SOURCED_FILE) && set + a &&,) \
+		test -z "$$TLS_ACME_EMAIL" && { echo "Missing env variable TLS_ACME_EMAIL" && exit 1; } || \
 		cat $(TRAEFIK_CONFIG_TEMPLATE_PATH) | envsubst > traefik/generated-files/install-configs.yaml
 endif
 

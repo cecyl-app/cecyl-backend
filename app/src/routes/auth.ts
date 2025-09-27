@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyServerOptions } from "fastify";
+import cors from '@fastify/cors'
 import { FromSchema } from "json-schema-to-ts";
 import { OAuth2Client } from "google-auth-library";
 
@@ -8,6 +9,12 @@ import { ErrorUtils } from "../utils/error-utils.js";
 
 
 export default function routes(fastify: FastifyInstance, _options: FastifyServerOptions) {
+    fastify.register(cors, {
+        origin: env.WEBAPP_DOMAIN,
+        credentials: true,
+        methods: ['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'PATCH']
+    })
+
     fastify.post<{ Body: GoogleSigninRequestBody }>(
         '/auth/signin/google',
         {

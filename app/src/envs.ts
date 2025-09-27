@@ -1,4 +1,4 @@
-import { str, envsafe, makeValidator } from 'envsafe';
+import { url, str, envsafe, makeValidator } from 'envsafe';
 import { InvalidInput } from './exceptions/generic-error.js';
 
 const commaSeparatedEmailsParser = makeValidator<string[]>((input: string) => {
@@ -12,6 +12,10 @@ const commaSeparatedEmailsParser = makeValidator<string[]>((input: string) => {
 export const env = envsafe({
     NODE_ENV: str({
         choices: ['test', 'production'],
+    }),
+    WEBAPP_DOMAIN: url({
+        desc: 'The domain of the web application. It is used to setup CORS',
+        example: 'http://localhost:5000'
     }),
     DB_CONN_STRING: str({
         desc: 'The connection string for the DB',

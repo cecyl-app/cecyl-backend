@@ -23,7 +23,7 @@ export default async function build(opts = {}) {
     const app = fastify(opts);
 
     await app.register(cors, {
-        origin: '*',
+        origin: env.WEBAPP_DOMAIN,
         methods: ['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'PATCH']
     })
 

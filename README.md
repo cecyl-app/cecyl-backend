@@ -52,6 +52,8 @@ Create a `envs` folder with the following file:
 
     GOOGLE_AUTH_CLIENT_ID=client-id-from-https://console.cloud.google.com/auth/clients
     GOOGLE_AUTH_ALLOWED_EMAILS=name1@gmail.com,name2@gmail.com
+
+    WEBAPP_DOMAIN=webapp.domain.com
     ```
 
     **Note**: `GOOGLE_AUTH_ALLOWED_EMAILS` specifies the comma-separated emails that are allowed
@@ -90,19 +92,21 @@ It initially verifies that a session secret key (used to secure the session cook
 Then, the compose is launched. you can include additional services/configurations using the `ENV` variable, which specifies the deployment environment. Each environment may require a list of deploy variables. The supported values of `ENV` are:
 - `prod`: the production deployment which includes the application, the db, and traefik for http.
     Deploy variables:
-    - `APP_DOMAIN` (Required): the application DNS domain (used by traefik for the https certificate)
+    - `API_SERVER_DOMAIN` (Required): the application DNS domain (used by traefik for the https certificate)
     - `TLS_ACME_EMAIL` (Required): the email used by the ACME client for the certificate issuance protocol
 - `prod-debug`: same as `prod`, but includes the traefik dashboard. Deploy variables are the same as well.
 - `local`: includes the application and the db
 - `dev`: the development environment, which includes the app, the db and its db viewer.
     
-Default: `prod`
+**Note**: The default value of `ENV` is `prod`.
+
+Example:
 
 ```bash
 make up ENV=dev
 ```
 
-The environment determines the configuration for each service or additional services (like `mongo-express` for `dev`, or `traefik` for `prod`). Besides, you can customize the deploy variables by creating a file in `deploy-vars/${ENV}.env`. Suppose, you want to deploy in production (`prod`):
+Besides, you can customize the deploy variables by creating a file in `deploy-vars/${ENV}.env`. Suppose, you want to deploy in production (`prod`):
 
 - Create `deploy-vars/prod.env` with the required deploy vars
 - Ensure the traefik template exists. In this case `traefik/templates/install-configs-prod.yaml.tmpl`

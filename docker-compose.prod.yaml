@@ -15,7 +15,7 @@ services:
     ports: !reset []
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.app.rule=Host(`${APP_DOMAIN}`)"
+      - "traefik.http.routers.app.rule=Host(`${API_SERVER_DOMAIN:?Set API_SERVER_DOMAIN to the domain of the API server, necessary by traefik for route discovery}`)"
       - "traefik.http.routers.app.entrypoints=websecure"
       - "traefik.http.routers.app.tls=true"
       - "traefik.http.routers.app.tls.certresolver=letsencrypt"

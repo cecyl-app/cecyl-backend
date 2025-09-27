@@ -3,7 +3,7 @@ services:
     build:
       target: devcontainer
     ports:
-      - 3000:80
+      - "${APP_PORT:-3000}:80"
     volumes:
       - .:/workspaces/cecyl-backend:cached
     command: sleep infinity
